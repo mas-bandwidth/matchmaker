@@ -32,46 +32,74 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+	"math/rand"
 )
+
+const SecondsPerDay = 86400
+const MinLatitude = -90
+const MaxLatitude = +90
+const MinLongitude = -180
+const MaxLongitude = +180
+
+type PlayerData struct {
+	latitude float32
+	longitude float32
+}
+
+var playerData [][]PlayerData
+
+func randomInt(min int, max int) int {
+	difference := max - min
+	value := rand.Intn(difference + 1)
+	return value + min
+}
 
 func secondsToTime(second uint64) time.Time {
 	startTime := time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)
 	return startTime.Add(time.Duration(second) * time.Second)
 }
 
-func runSimulation(ctx context.Context) {
+func runSimulation() {
 	var seconds uint64
+	var players uint64
 	for {
 		time := secondsToTime(seconds)
-		fmt.Printf("%s\n", time.Format("2006-01-02 15:04:05"))
+		i := seconds % SecondsPerDay
+		players += uint64(len(playerData[i]))
+		fmt.Printf("%s: %d players\n", time.Format("2006-01-02 15:04:05"), players)
 		seconds++
 	}
-	// todo: wait group
+}
+
+func initialize() {
+	fmt.Printf("initializing...\n")
+	playerData = make([][]PlayerData, SecondsPerDay)
+	for i := 0; i < SecondsPerDay; i++ {
+		numPlayers := randomInt(0,100)
+		playerData[i] = make([]PlayerData, numPlayers)
+		for j := 0; j < numPlayers; j++ {
+			playerData[i] = append(playerData[i], PlayerData{latitude: float32(randomInt(MinLatitude, MaxLatitude)), longitude: float32(randomInt(MinLongitude, MaxLongitude))})
+		}
+	}
+	fmt.Printf("ready!\n")
 }
 
 func main() {
 
-	ctx, ctxCancelFunc := context.WithCancel(context.Background())
+	initialize()
 
-	fmt.Printf("hello\n")
-
-	go runSimulation(ctx)
+	go runSimulation()
 
 	termChan := make(chan os.Signal, 1)
 	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 	<-termChan
 
 	fmt.Printf("\nshutting down\n")
-
-	ctxCancelFunc()
-
-	// todo: wait for stuff to shutdown clean
 
 	fmt.Printf("shutdown completed\n")
 }
