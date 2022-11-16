@@ -46,12 +46,12 @@ const MaxLatitude = +90
 const MinLongitude = -180
 const MaxLongitude = +180
 
-type PlayerData struct {
+type NewPlayerData struct {
 	latitude float32
 	longitude float32
 }
 
-var playerData [][]PlayerData
+var newPlayerData [][]NewPlayerData
 
 func randomInt(min int, max int) int {
 	difference := max - min
@@ -64,28 +64,47 @@ func secondsToTime(second uint64) time.Time {
 	return startTime.Add(time.Duration(second) * time.Second)
 }
 
+const PlayerState_Matchmaking = 0
+const PlayerState_Playing = 1
+
+type ActivePlayer struct {
+	state int
+	latitude float32
+	longitude float32
+}
+
+var activePlayers map[uint64]*ActivePlayer
+
 func runSimulation() {
 	var seconds uint64
-	var players uint64
+	var playerId uint64
 	for {
 		time := secondsToTime(seconds)
 		i := seconds % SecondsPerDay
-		players += uint64(len(playerData[i]))
-		fmt.Printf("%s: %d players\n", time.Format("2006-01-02 15:04:05"), players)
+		for j := range newPlayerData[i] {
+			activePlayer := ActivePlayer{}
+			activePlayer.latitude = newPlayerData[i][j].latitude
+			activePlayer.longitude = newPlayerData[i][j].longitude
+			activePlayers[playerId] = &activePlayer
+			playerId++
+		}
+		fmt.Printf("%s: %d players\n", time.Format("2006-01-02 15:04:05"), len(activePlayers))
 		seconds++
 	}
 }
 
 func initialize() {
 	fmt.Printf("initializing...\n")
-	playerData = make([][]PlayerData, SecondsPerDay)
+	newPlayerData = make([][]NewPlayerData, SecondsPerDay)
 	for i := 0; i < SecondsPerDay; i++ {
-		numPlayers := randomInt(0,100)
-		playerData[i] = make([]PlayerData, numPlayers)
-		for j := 0; j < numPlayers; j++ {
-			playerData[i] = append(playerData[i], PlayerData{latitude: float32(randomInt(MinLatitude, MaxLatitude)), longitude: float32(randomInt(MinLongitude, MaxLongitude))})
+		newPlayers := randomInt(0,5)
+		newPlayerData[i] = make([]NewPlayerData, newPlayers)
+		for j := 0; j < newPlayers; j++ {
+			newPlayerData[i][j].latitude = float32(randomInt(MinLatitude, MaxLatitude))
+			newPlayerData[i][j].longitude = float32(randomInt(MinLongitude, MaxLongitude))
 		}
 	}
+	activePlayers = make(map[uint64]*ActivePlayer)
 	fmt.Printf("ready!\n")
 }
 
