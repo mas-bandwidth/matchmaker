@@ -266,7 +266,27 @@ func runSimulation() {
 
 		time := secondsToTime(seconds)
 
+		fmt.Printf("--------------------------------------------------\n")
+
 		fmt.Printf("%s: %d new, %d ideal, %d warmbody\n", time.Format("2006-01-02 15:04:05"), numNew, numIdeal, numWarmBody)
+
+		datacenterArray := make([]*Datacenter, len(datacenters))
+
+		index := 0
+		for _,v := range datacenters {
+			datacenterArray[index] = v
+			index++
+		}
+
+		sort.SliceStable(datacenterArray[:], func(i, j int) bool {
+			return len(datacenterArray[i].playerQueue) > len(datacenterArray[j].playerQueue)
+		})
+
+		for i := range datacenterArray {
+			fmt.Printf("%s: %d\n", datacenterArray[i].name, len(datacenterArray[i].playerQueue))
+		}
+
+		fmt.Printf("--------------------------------------------------\n")
 
 		seconds++
 	}
