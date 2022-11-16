@@ -92,6 +92,7 @@ type Datacenter struct {
 	name string
 	latitude float64
 	longitude float64
+	playerQueue []*ActivePlayer
 }
 
 var datacenters map[uint64]*Datacenter
@@ -139,6 +140,10 @@ func initialize() {
 	datacenters[305] = &Datacenter{name: "madrid", latitude: 40.416775, longitude: -3.703790}
 
 	datacenters[400] = &Datacenter{name: "sydney", latitude: -33.865143, longitude: 151.209900}
+
+	for _,v := range datacenters {
+		v.playerQueue = make([]*ActivePlayer, 0, 1024)
+	}
 
 	fmt.Printf("ready!\n")
 }
@@ -222,11 +227,24 @@ func runSimulation() {
 
 				numNew++
 
-				if activePlayers[i].datacenterCosts[0].cost > IdealCostThreshold {
-					activePlayers[i].state = PlayerState_WarmBody
-				} else {
+				if activePlayers[i].datacenterCosts[0].cost <= IdealCostThreshold {
+
 					activePlayers[i].state = PlayerState_Ideal
-					// todo: add player to set of datacenter queues within spread of best datacenter
+
+					costLimit := activePlayers[i].datacenterCosts[0].cost + IdealCostSpread
+					
+					for j := range activePlayers[i].datacenterCosts {
+						datacenterId := activePlayers[i].datacenterCosts[j].datacenterId
+						datacenterCost := activePlayers[i].datacenterCosts[j].cost
+						if datacenterCost <= costLimit {
+							datacenters[datacenterId].playerQueue = append(datacenters[datacenterId].playerQueue, activePlayers[i])
+						}
+					}
+
+				} else {
+
+					activePlayers[i].state = PlayerState_WarmBody
+
 				}
 
 			} else if activePlayers[i].state == PlayerState_Ideal {
