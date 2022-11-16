@@ -76,10 +76,12 @@ type ActivePlayer struct {
 var activePlayers map[uint64]*ActivePlayer
 
 func runSimulation() {
+
 	var seconds uint64
 	var playerId uint64
+
 	for {
-		time := secondsToTime(seconds)
+
 		i := seconds % SecondsPerDay
 		for j := range newPlayerData[i] {
 			activePlayer := ActivePlayer{}
@@ -88,13 +90,37 @@ func runSimulation() {
 			activePlayers[playerId] = &activePlayer
 			playerId++
 		}
-		fmt.Printf("%s: %d players\n", time.Format("2006-01-02 15:04:05"), len(activePlayers))
+
+		numMatching := 0
+		numInGame := 0
+		for i := range activePlayers {
+			if activePlayers[i].state == PlayerState_Matchmaking {
+				numMatching++
+			} else {
+				numInGame++
+			}
+		}
+
+		time := secondsToTime(seconds)
+
+		fmt.Printf("%s: %d matching, %d playing\n", time.Format("2006-01-02 15:04:05"), numMatching, numInGame)
+
 		seconds++
 	}
 }
 
+type Datacenter struct {
+	name string
+	latitude float32
+	longitude float32
+}
+
+var datacenters map[uint64]*Datacenter
+
 func initialize() {
+
 	fmt.Printf("initializing...\n")
+
 	newPlayerData = make([][]NewPlayerData, SecondsPerDay)
 	for i := 0; i < SecondsPerDay; i++ {
 		newPlayers := randomInt(0,5)
@@ -104,7 +130,11 @@ func initialize() {
 			newPlayerData[i][j].longitude = float32(randomInt(MinLongitude, MaxLongitude))
 		}
 	}
+
 	activePlayers = make(map[uint64]*ActivePlayer)
+
+	datacenters = make(map[uint64]*Datacenter)
+
 	fmt.Printf("ready!\n")
 }
 
