@@ -39,6 +39,7 @@ import (
 	"time"
 	"math"
 	"math/rand"
+	"sort"
 )
 
 const SecondsPerDay = 86400
@@ -48,8 +49,8 @@ const MinLongitude = -180
 const MaxLongitude = +180
 
 type NewPlayerData struct {
-	latitude float32
-	longitude float32
+	latitude float64
+	longitude float64
 }
 
 var newPlayerData [][]NewPlayerData
@@ -81,63 +82,14 @@ func haversineDistance(lat1 float64, long1 float64, lat2 float64, long2 float64)
 	return d // kilometers
 }
 
-const PlayerState_Matchmaking = 0
-const PlayerState_Playing = 1
-
-type ActivePlayer struct {
-	state int
-	latitude float32
-	longitude float32
-	datacenterCost map[uint64]int
-}
-
-var activePlayers map[uint64]*ActivePlayer
-
-func runSimulation() {
-
-	var seconds uint64
-	var playerId uint64
-
-	for {
-
-		i := seconds % SecondsPerDay
-
-		for j := range newPlayerData[i] {
-			activePlayer := ActivePlayer{}
-			activePlayer.latitude = newPlayerData[i][j].latitude
-			activePlayer.longitude = newPlayerData[i][j].longitude
-			activePlayer.datacenterCost = make(map[uint64]int)
-			for k,v := range datacenters {
-				// todo: get datacenter costs
-				_ = k
-				_ = v
-			}
-			activePlayers[playerId] = &activePlayer
-			playerId++
-		}
-
-		numMatching := 0
-		numInGame := 0
-		for i := range activePlayers {
-			if activePlayers[i].state == PlayerState_Matchmaking {
-				numMatching++
-			} else {
-				numInGame++
-			}
-		}
-
-		time := secondsToTime(seconds)
-
-		fmt.Printf("%s: %d matching, %d playing\n", time.Format("2006-01-02 15:04:05"), numMatching, numInGame)
-
-		seconds++
-	}
+func kilometersToRTT(kilometers float64) float64 {
+	return kilometers / 299792.458 * 1000.0 * ( 3.0 / 2.0 ) // ~ 2/3rds speed of light in fiber optic cables
 }
 
 type Datacenter struct {
 	name string
-	latitude float32
-	longitude float32
+	latitude float64
+	longitude float64
 }
 
 var datacenters map[uint64]*Datacenter
@@ -151,8 +103,8 @@ func initialize() {
 		newPlayers := randomInt(0,5)
 		newPlayerData[i] = make([]NewPlayerData, newPlayers)
 		for j := 0; j < newPlayers; j++ {
-			newPlayerData[i][j].latitude = float32(randomInt(MinLatitude, MaxLatitude))
-			newPlayerData[i][j].longitude = float32(randomInt(MinLongitude, MaxLongitude))
+			newPlayerData[i][j].latitude = float64(randomInt(MinLatitude, MaxLatitude))
+			newPlayerData[i][j].longitude = float64(randomInt(MinLongitude, MaxLongitude))
 		}
 	}
 
@@ -187,6 +139,84 @@ func initialize() {
 	datacenters[400] = &Datacenter{name: "sydney", latitude: -33.865143, longitude: 151.209900}
 
 	fmt.Printf("ready!\n")
+}
+
+const PlayerState_Matchmaking = 0
+const PlayerState_Playing = 1
+
+type DatacenterCostMapEntry struct {
+	index int
+	cost float64
+}
+
+type DatacenterCostEntry struct {
+	datacenterId uint64
+	cost float64
+}
+
+type ActivePlayer struct {
+	state int
+	latitude float64
+	longitude float64
+	datacenterCostMap map[uint64]DatacenterCostMapEntry
+	datacenterCosts []DatacenterCostEntry
+}
+
+var activePlayers map[uint64]*ActivePlayer
+
+func runSimulation() {
+
+	var seconds uint64
+	var playerId uint64
+
+	for {
+
+		i := seconds % SecondsPerDay
+
+		for j := range newPlayerData[i] {
+			
+			activePlayer := ActivePlayer{}
+			
+			activePlayer.latitude = newPlayerData[i][j].latitude
+			activePlayer.longitude = newPlayerData[i][j].longitude
+			activePlayer.datacenterCostMap = make(map[uint64]DatacenterCostMapEntry)
+			activePlayer.datacenterCosts = make([]DatacenterCostEntry, len(datacenters))
+			
+			index := 0
+			for k,v := range datacenters {
+				kilometers := haversineDistance(activePlayer.latitude, activePlayer.longitude, v.latitude, v.longitude)
+				milliseconds := kilometersToRTT(kilometers)
+				activePlayer.datacenterCostMap[k] = DatacenterCostMapEntry{cost: milliseconds, index: index}
+				activePlayer.datacenterCosts[index].datacenterId = k
+				activePlayer.datacenterCosts[index].cost = milliseconds
+				index++
+			}
+			
+			sort.SliceStable(activePlayer.datacenterCosts[:], func(i, j int) bool {
+				return activePlayer.datacenterCosts[i].cost < activePlayer.datacenterCosts[j].cost
+			})
+
+			activePlayers[playerId] = &activePlayer
+			
+			playerId++
+		}
+
+		numMatching := 0
+		numInGame := 0
+		for i := range activePlayers {
+			if activePlayers[i].state == PlayerState_Matchmaking {
+				numMatching++
+			} else {
+				numInGame++
+			}
+		}
+
+		time := secondsToTime(seconds)
+
+		fmt.Printf("%s: %d matching, %d playing\n", time.Format("2006-01-02 15:04:05"), numMatching, numInGame)
+
+		seconds++
+	}
 }
 
 func main() {
