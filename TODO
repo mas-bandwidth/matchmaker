@@ -34,7 +34,7 @@ TODO
 
 	The goal is then to be greedy, to quickly match players together, not with absolutely ideal latency, but to quickly build the groups that are "acceptable".
 
-	Actually optimizing latency is of combinatorial complexity, surely.
+	Actually optimizing latency is of combinatorial complexity, surely...
 
 	---------
 
@@ -45,5 +45,55 @@ TODO
 	This way if we miss a player out in one pass, we'll get them on the next pass...
 
 	---------
+
+	Idea. We can grab the player immediately during iteration and insert them into the match (simplest).
+
+	Or we can generate the set of possible matches, for each player, sort them according to least (total) cost, and some weighting of personal cost (want to minimize the latency of the game I'm in).
+
+	Start with the simple way...
+
+	---------
+
+	Idea. Generate the set of matches available for each player and then globally select?
+
+	What does the global select do? Well, it means that the player tends to bias towards 
+
+	---------
+
+	STOP.
+
+	High level strategy.
+
+    Find the best datacenters for the player to play on, eg. closest datacenter, and all other datacenters within 10ms of that.
+
+    Work on finding this player a game in these datacenters for n seconds, eg. n = 60
+
+    ---------
+
+    If we can't find a game within n seconds, expand somewhat (relax), to like, just find this person somewhere to play in the region.
+
+    At this point the person becomes a "warm body" to fill games in the region.
+
+    The warm body fills can be haphazard, eg. prefer lower latency matches, and subsequently relax over time to encompass any datacenter in the region.
+
+    ---------
+
+    This means that there are really two phases:
+
+    	For a very small number of datacenters, just find the first game on those datacenters that are acceptable. Basically, any game found on those datacenters is acceptable, no need to optimize between datacenters. All good.
+
+    ---------
+
+
+
+
+
+
+
+
+
+
+
+
 
 

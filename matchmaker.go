@@ -47,6 +47,8 @@ const MinLatitude = -90
 const MaxLatitude = +90
 const MinLongitude = -180
 const MaxLongitude = +180
+const IdealCostThreshold = 25
+const IdealCostSpread = 10
 
 type NewPlayerData struct {
 	latitude float64
@@ -141,8 +143,11 @@ func initialize() {
 	fmt.Printf("ready!\n")
 }
 
-const PlayerState_Matchmaking = 0
-const PlayerState_Playing = 1
+const PlayerState_New = 0
+const PlayerState_Ideal = 1
+const PlayerState_WarmBody = 2
+const PlayerState_Playing = 3
+const PlayerState_Bots = 4
 
 type DatacenterCostMapEntry struct {
 	index int
@@ -173,6 +178,8 @@ func runSimulation() {
 
 		i := seconds % SecondsPerDay
 
+		// add new players to the simulation
+
 		for j := range newPlayerData[i] {
 			
 			activePlayer := ActivePlayer{}
@@ -201,19 +208,47 @@ func runSimulation() {
 			playerId++
 		}
 
-		numMatching := 0
-		numInGame := 0
+		// iterate across all active players
+
+		numNew := 0
+		numIdeal := 0
+		numWarmBody := 0
+		// numPlaying := 0
+		// numBots := 0
+
 		for i := range activePlayers {
-			if activePlayers[i].state == PlayerState_Matchmaking {
-				numMatching++
-			} else {
-				numInGame++
+
+			if activePlayers[i].state == PlayerState_New {
+
+				numNew++
+
+				if activePlayers[i].datacenterCosts[0].cost > IdealCostThreshold {
+					activePlayers[i].state = PlayerState_WarmBody
+				} else {
+					activePlayers[i].state = PlayerState_Ideal
+					// todo: add player to set of datacenter queues within spread of best datacenter
+				}
+
+			} else if activePlayers[i].state == PlayerState_Ideal {
+
+				numIdeal++
+
+			} else if activePlayers[i].state == PlayerState_WarmBody {
+
+				numWarmBody++
+
 			}
 		}
 
+		// todo: iterate across all datacenter queues (random order)
+
+		// ...
+
+		// print status for this iteration
+
 		time := secondsToTime(seconds)
 
-		fmt.Printf("%s: %d matching, %d playing\n", time.Format("2006-01-02 15:04:05"), numMatching, numInGame)
+		fmt.Printf("%s: %d new, %d ideal, %d warmbody\n", time.Format("2006-01-02 15:04:05"), numNew, numIdeal, numWarmBody)
 
 		seconds++
 	}
