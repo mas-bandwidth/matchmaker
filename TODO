@@ -8,10 +8,15 @@ DONE
 
 	Advertise as available to datacenters < 50ms latency for the first n seconds.	
 
-TODO
-
 	Add active players to to queues per-datacenter when they go into "ideal" state.
 
-	Walk set of datacenters (random order) and iterate across all players in that queue (order of longest waiting to , and send them off into games.
+	Walk set of datacenters (random order) and iterate across all players in that queue, and send them off into games.
 
+	Lower probability of new players.
+
+TODO
+
+	Parse the csv for real player data.
+
+	Track the number of seconds players wait in matchmaking.
 

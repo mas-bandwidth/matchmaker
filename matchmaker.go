@@ -40,8 +40,12 @@ import (
 	"math"
 	"math/rand"
 	"sort"
+	"bufio"
+	"strings"
+	"strconv"
 )
 
+const PlayersPerMatch = 4
 const SecondsPerDay = 86400
 const MinLatitude = -90
 const MaxLatitude = +90
@@ -85,7 +89,7 @@ func haversineDistance(lat1 float64, long1 float64, lat2 float64, long2 float64)
 }
 
 func kilometersToRTT(kilometers float64) float64 {
-	return kilometers / 299792.458 * 1000.0 * ( 3.0 / 2.0 ) // ~ 2/3rds speed of light in fiber optic cables
+	return kilometers / 299792.458 * 1000.0 * 2.0 // be conservative
 }
 
 type Datacenter struct {
@@ -101,17 +105,41 @@ func initialize() {
 
 	fmt.Printf("initializing...\n")
 
-	newPlayerData = make([][]NewPlayerData, SecondsPerDay)
-	for i := 0; i < SecondsPerDay; i++ {
-		newPlayers := randomInt(0,5)
-		newPlayerData[i] = make([]NewPlayerData, newPlayers)
-		for j := 0; j < newPlayers; j++ {
-			newPlayerData[i][j].latitude = float64(randomInt(MinLatitude, MaxLatitude))
-			newPlayerData[i][j].longitude = float64(randomInt(MinLongitude, MaxLongitude))
-		}
-	}
+	// load the players.csv file and parse it
 
-	activePlayers = make(map[uint64]*ActivePlayer)
+    f, err := os.Open("players.csv")
+    if err != nil {
+        panic(err)
+    }
+
+    defer f.Close()
+
+    scanner := bufio.NewScanner(f)
+
+	newPlayerData = make([][]NewPlayerData, SecondsPerDay)
+
+    for scanner.Scan() {
+        values := strings.Split(scanner.Text(), ",")
+        if len(values) != 3 {
+        	continue
+        }
+        time := values[0]
+        latitude, _ := strconv.ParseFloat(values[1], 64)
+        longitude, _ := strconv.ParseFloat(values[2], 64)
+        time_values := strings.Split(time, ":")
+        time_hours, _ := strconv.Atoi(time_values[0])
+        time_minutes, _ := strconv.Atoi(time_values[1])
+        time_seconds, _ := strconv.Atoi(time_values[2])
+        seconds := uint64(0)
+        seconds += uint64(time_seconds) + uint64(time_minutes)*60 + uint64(time_hours)*60*60
+        newPlayerData[seconds] = append(newPlayerData[seconds], NewPlayerData{latitude: latitude, longitude: longitude})
+    }
+
+    if err := scanner.Err(); err != nil {
+        panic(err)
+    }
+
+	// initialize datacenters for the simulation
 
 	datacenters = make(map[uint64]*Datacenter)
 
@@ -144,6 +172,10 @@ func initialize() {
 	for _,v := range datacenters {
 		v.playerQueue = make([]*ActivePlayer, 0, 1024)
 	}
+
+    // create active players hash (empty)
+
+	activePlayers = make(map[uint64]*ActivePlayer)
 
 	fmt.Printf("ready!\n")
 }
@@ -218,7 +250,7 @@ func runSimulation() {
 		numNew := 0
 		numIdeal := 0
 		numWarmBody := 0
-		// numPlaying := 0
+		numPlaying := 0
 		// numBots := 0
 
 		for i := range activePlayers {
@@ -255,12 +287,50 @@ func runSimulation() {
 
 				numWarmBody++
 
+			} else if activePlayers[i].state == PlayerState_Playing {
+
+				numPlaying++
+
 			}
 		}
 
-		// todo: iterate across all datacenter queues (random order)
+		// iterate across all datacenter queues
 
-		// ...
+		for _,v := range datacenters {
+
+			playerCount := 0
+			var matchPlayers [PlayersPerMatch]*ActivePlayer
+
+			for i := range v.playerQueue {
+
+				if v.playerQueue[i].state == PlayerState_Ideal {
+					matchPlayers[playerCount] = v.playerQueue[i]
+					playerCount++
+				} else {
+					continue
+				}
+
+				if playerCount == PlayersPerMatch {
+					// start a new match
+					fmt.Printf("new match in %s\n", v.name)
+					for j := 0; j < PlayersPerMatch; j++ {
+						matchPlayers[j].state = PlayerState_Playing
+					}
+					playerCount = 0
+				}
+
+			}
+
+			newPlayerQueue := make([]*ActivePlayer, 0, 1024)
+
+			for i := range v.playerQueue {
+				if v.playerQueue[i].state == PlayerState_Ideal {
+					newPlayerQueue = append(newPlayerQueue, v.playerQueue[i])
+				}
+			}
+
+			v.playerQueue = newPlayerQueue
+		}
 
 		// print status for this iteration
 
@@ -268,7 +338,7 @@ func runSimulation() {
 
 		fmt.Printf("--------------------------------------------------\n")
 
-		fmt.Printf("%s: %d new, %d ideal, %d warmbody\n", time.Format("2006-01-02 15:04:05"), numNew, numIdeal, numWarmBody)
+		fmt.Printf("%s: %d new, %d ideal, %d warmbody, %d playing\n", time.Format("2006-01-02 15:04:05"), numNew, numIdeal, numWarmBody, numPlaying)
 
 		datacenterArray := make([]*Datacenter, len(datacenters))
 
