@@ -47,7 +47,8 @@ import (
 
 const PlayAgainPercent = 90
 const MatchLengthSeconds = 198
-const MaxTime = 60
+const IdealTime = 60
+const WarmBodyTime = 60
 const OneIn = 10
 const PlayersPerMatch = 4
 const SecondsPerDay = 86400
@@ -212,6 +213,7 @@ type DatacenterCostEntry struct {
 }
 
 type ActivePlayer struct {
+	playerId uint64
 	state int
 	latitude float64
 	longitude float64
@@ -241,6 +243,7 @@ func runSimulation() {
 
 			activePlayer := ActivePlayer{}
 			
+			activePlayer.playerId = playerId
 			activePlayer.latitude = newPlayerData[i][j].latitude
 			activePlayer.longitude = newPlayerData[i][j].longitude
 			activePlayer.datacenterCostMap = make(map[uint64]DatacenterCostMapEntry)
@@ -272,6 +275,8 @@ func runSimulation() {
 		numWarmBody := 0
 		numPlaying := 0
 		numBots := 0
+
+		warmBodies := make(map[uint64]*ActivePlayer)
 
 		for i := range activePlayers {
 
@@ -306,7 +311,7 @@ func runSimulation() {
 
 				activePlayers[i].counter++
 
-				if activePlayers[i].counter > MaxTime {
+				if activePlayers[i].counter > IdealTime {
 					activePlayers[i].state = PlayerState_WarmBody
 					activePlayers[i].counter = 0
 				}
@@ -317,9 +322,11 @@ func runSimulation() {
 
 				activePlayers[i].counter++
 
-				if activePlayers[i].counter > MaxTime {
+				if activePlayers[i].counter > WarmBodyTime {
 					activePlayers[i].state = PlayerState_Bots
 					activePlayers[i].counter = MatchLengthSeconds
+				} else {
+					warmBodies[i] = activePlayers[i]
 				}
 
 			} else if activePlayers[i].state == PlayerState_Playing {
@@ -363,7 +370,7 @@ func runSimulation() {
 
 			for i := range v.playerQueue {
 
-				if v.playerQueue[i].state == PlayerState_Ideal {
+				if v.playerQueue[i].state == PlayerState_Ideal || v.playerQueue[i].state == PlayerState_WarmBody {
 					matchPlayers[playerCount] = v.playerQueue[i]
 					playerCount++
 				} else {
@@ -372,10 +379,13 @@ func runSimulation() {
 
 				if playerCount == PlayersPerMatch {
 					// start a new match
-					fmt.Printf("new match in %s\n", v.name)
+					fmt.Printf("new match in %s ", v.name)
 					for j := 0; j < PlayersPerMatch; j++ {
+						fmt.Printf("%d ", matchPlayers[j].counter)
 						matchPlayers[j].state = PlayerState_Playing
+						matchPlayers[j].counter = 0
 					}
+					fmt.Printf("\n")
 					playerCount = 0
 				}
 
@@ -390,6 +400,16 @@ func runSimulation() {
 			}
 
 			v.playerQueue = newPlayerQueue
+		}
+
+		// feed warm bodies back into datacenter queues to fill matches
+
+		for _, warmBody := range warmBodies {
+			for _, datacenter := range datacenters {
+				if len(datacenter.playerQueue) > 0 && len(datacenter.playerQueue) < PlayersPerMatch {
+					datacenter.playerQueue = append(datacenter.playerQueue, warmBody)
+				}
+			}
 		}
 
 		// print status for this iteration

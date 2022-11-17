@@ -16,11 +16,20 @@ DONE
 
 	Parse the csv for real player data.
 
-TODO
-
 	Implement some strategy so I can sample a certain percentage chance of grabbing samples 1 in n chance.
 
-	-----------
+	Implement logic to go into playing state
 
-	Track the number of seconds players wait in matchmaking.
+	Implement logic to go into bot matches
 
+	Track the number of seconds players wait in matchmaking and print it out for each player when the match starts.
+
+	Stick the player id inside the active player (for debugging)
+
+TODO
+
+	Feed warm body players back into matchmaking queues (basic, any datacenter that needs player...)
+
+	Smarter feed warm body players back into matchmaking queues (according to counter cost expansion...)
+
+	Implement logic to expand cost over time for warm body players (so that within 30 seconds, they are in all datacenters in set...)
