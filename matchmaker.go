@@ -45,7 +45,10 @@ import (
 	"strconv"
 )
 
-const OneIn = 15
+const PlayAgainPercent = 90
+const MatchLengthSeconds = 198
+const MaxTime = 60
+const OneIn = 10
 const PlayersPerMatch = 4
 const SecondsPerDay = 86400
 const MinLatitude = -90
@@ -61,6 +64,10 @@ type NewPlayerData struct {
 }
 
 var newPlayerData [][]NewPlayerData
+
+func percentChance(threshold int) bool {
+	return randomInt(0,100) <= threshold
+}
 
 func chance(n int) bool {
 	if rand.Intn(n) == 0 {
@@ -210,6 +217,7 @@ type ActivePlayer struct {
 	longitude float64
 	datacenterCostMap map[uint64]DatacenterCostMapEntry
 	datacenterCosts []DatacenterCostEntry
+	counter int
 }
 
 var activePlayers map[uint64]*ActivePlayer
@@ -263,7 +271,7 @@ func runSimulation() {
 		numIdeal := 0
 		numWarmBody := 0
 		numPlaying := 0
-		// numBots := 0
+		numBots := 0
 
 		for i := range activePlayers {
 
@@ -288,6 +296,7 @@ func runSimulation() {
 				} else {
 
 					activePlayers[i].state = PlayerState_WarmBody
+					activePlayers[i].counter = 0
 
 				}
 
@@ -295,14 +304,53 @@ func runSimulation() {
 
 				numIdeal++
 
+				activePlayers[i].counter++
+
+				if activePlayers[i].counter > MaxTime {
+					activePlayers[i].state = PlayerState_WarmBody
+					activePlayers[i].counter = 0
+				}
+
 			} else if activePlayers[i].state == PlayerState_WarmBody {
 
 				numWarmBody++
+
+				activePlayers[i].counter++
+
+				if activePlayers[i].counter > MaxTime {
+					activePlayers[i].state = PlayerState_Bots
+					activePlayers[i].counter = MatchLengthSeconds
+				}
 
 			} else if activePlayers[i].state == PlayerState_Playing {
 
 				numPlaying++
 
+				activePlayers[i].counter++
+
+				if activePlayers[i].counter > MatchLengthSeconds {
+					if percentChance(PlayAgainPercent) {
+						activePlayers[i].state = PlayerState_New
+						activePlayers[i].counter = 0
+					} else {
+						delete(activePlayers, i)
+					}
+				}
+
+			} else if activePlayers[i].state == PlayerState_Bots {
+
+				numBots++
+
+				activePlayers[i].counter++
+
+				if activePlayers[i].counter > MatchLengthSeconds {
+					if percentChance(PlayAgainPercent) {
+						activePlayers[i].state = PlayerState_New
+						activePlayers[i].counter = 0
+					} else {
+						delete(activePlayers, i)
+					}
+				}
 			}
 		}
 
@@ -350,7 +398,7 @@ func runSimulation() {
 
 		fmt.Printf("--------------------------------------------------\n")
 
-		fmt.Printf("%s: %d new, %d ideal, %d warmbody, %d playing\n", time.Format("2006-01-02 15:04:05"), numNew, numIdeal, numWarmBody, numPlaying)
+		fmt.Printf("%s: %d new, %d ideal, %d warmbody, %d playing, %d bots\n", time.Format("2006-01-02 15:04:05"), numNew, numIdeal, numWarmBody, numPlaying, numBots)
 
 		datacenterArray := make([]*Datacenter, len(datacenters))
 
