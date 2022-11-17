@@ -26,10 +26,12 @@ DONE
 
 	Stick the player id inside the active player (for debugging)
 
-TODO
-
 	Feed warm body players back into matchmaking queues (basic, any datacenter that needs player...)
 
-	Smarter feed warm body players back into matchmaking queues (according to counter cost expansion...)
+TODO
 
-	Implement logic to expand cost over time for warm body players (so that within 30 seconds, they are in all datacenters in set...)
+	Integrate per-datacenter latency map
+
+	Implement regions
+
+	

@@ -56,7 +56,7 @@ const MinLatitude = -90
 const MaxLatitude = +90
 const MinLongitude = -180
 const MaxLongitude = +180
-const IdealCostThreshold = 25
+const IdealCostThreshold = 50
 const IdealCostSpread = 10
 
 type NewPlayerData struct {
@@ -105,13 +105,14 @@ func haversineDistance(lat1 float64, long1 float64, lat2 float64, long2 float64)
 }
 
 func kilometersToRTT(kilometers float64) float64 {
-	return kilometers / 299792.458 * 1000.0 * 2.0 // be conservative
+	return kilometers / 299792.458 * 1000.0 * 2.0 * 2.0 // be conservative
 }
 
 type Datacenter struct {
 	name string
 	latitude float64
 	longitude float64
+	playerCount int
 	playerQueue []*ActivePlayer
 }
 
@@ -220,6 +221,7 @@ type ActivePlayer struct {
 	datacenterCostMap map[uint64]DatacenterCostMapEntry
 	datacenterCosts []DatacenterCostEntry
 	counter int
+	datacenterId uint64
 }
 
 var activePlayers map[uint64]*ActivePlayer
@@ -336,9 +338,11 @@ func runSimulation() {
 				activePlayers[i].counter++
 
 				if activePlayers[i].counter > MatchLengthSeconds {
+					datacenters[activePlayers[i].datacenterId].playerCount--
 					if percentChance(PlayAgainPercent) {
 						activePlayers[i].state = PlayerState_New
 						activePlayers[i].counter = 0
+						activePlayers[i].datacenterId = 0
 					} else {
 						delete(activePlayers, i)
 					}
@@ -351,9 +355,11 @@ func runSimulation() {
 				activePlayers[i].counter++
 
 				if activePlayers[i].counter > MatchLengthSeconds {
+					datacenters[activePlayers[i].datacenterId].playerCount--
 					if percentChance(PlayAgainPercent) {
 						activePlayers[i].state = PlayerState_New
 						activePlayers[i].counter = 0
+						activePlayers[i].datacenterId = 0
 					} else {
 						delete(activePlayers, i)
 					}
@@ -363,7 +369,7 @@ func runSimulation() {
 
 		// iterate across all datacenter queues
 
-		for _,v := range datacenters {
+		for k,v := range datacenters {
 
 			playerCount := 0
 			var matchPlayers [PlayersPerMatch]*ActivePlayer
@@ -379,13 +385,15 @@ func runSimulation() {
 
 				if playerCount == PlayersPerMatch {
 					// start a new match
-					fmt.Printf("new match in %s ", v.name)
+					// fmt.Printf("new match in %s ", v.name)
 					for j := 0; j < PlayersPerMatch; j++ {
-						fmt.Printf("%d ", matchPlayers[j].counter)
+						// fmt.Printf("%d ", matchPlayers[j].counter)
 						matchPlayers[j].state = PlayerState_Playing
 						matchPlayers[j].counter = 0
+						matchPlayers[j].datacenterId = k
+						v.playerCount++
 					}
-					fmt.Printf("\n")
+					// fmt.Printf("\n")
 					playerCount = 0
 				}
 
@@ -407,7 +415,16 @@ func runSimulation() {
 		for _, warmBody := range warmBodies {
 			for _, datacenter := range datacenters {
 				if len(datacenter.playerQueue) > 0 && len(datacenter.playerQueue) < PlayersPerMatch {
-					datacenter.playerQueue = append(datacenter.playerQueue, warmBody)
+					found := false
+					for i := range datacenter.playerQueue {
+						if datacenter.playerQueue[i].playerId == warmBody.playerId {
+							found = true
+							break
+						}
+					}
+					if !found {
+						datacenter.playerQueue = append(datacenter.playerQueue, warmBody)
+					}
 				}
 			}
 		}
@@ -420,6 +437,8 @@ func runSimulation() {
 
 		fmt.Printf("%s: %d new, %d ideal, %d warmbody, %d playing, %d bots\n", time.Format("2006-01-02 15:04:05"), numNew, numIdeal, numWarmBody, numPlaying, numBots)
 
+		fmt.Printf("--------------------------------------------------\n")
+
 		datacenterArray := make([]*Datacenter, len(datacenters))
 
 		index := 0
@@ -429,14 +448,12 @@ func runSimulation() {
 		}
 
 		sort.SliceStable(datacenterArray[:], func(i, j int) bool {
-			return len(datacenterArray[i].playerQueue) > len(datacenterArray[j].playerQueue)
+			return datacenterArray[i].playerCount > datacenterArray[j].playerCount
 		})
 
 		for i := range datacenterArray {
-			fmt.Printf("%s: %d\n", datacenterArray[i].name, len(datacenterArray[i].playerQueue))
+			fmt.Printf("%d\t\t%s\n", datacenterArray[i].playerCount, datacenterArray[i].name)
 		}
-
-		fmt.Printf("--------------------------------------------------\n")
 
 		seconds++
 	}
