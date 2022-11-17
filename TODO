@@ -28,10 +28,14 @@ DONE
 
 	Feed warm body players back into matchmaking queues (basic, any datacenter that needs player...)
 
+	Track number of players per-datacenter
+
 TODO
+
+	Track average latency per-datacenter
+
+	--------
 
 	Integrate per-datacenter latency map
 
 	Implement regions
-
-	
