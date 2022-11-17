@@ -43,6 +43,7 @@ import (
 	"bufio"
 	"strings"
 	"strconv"
+	"text/tabwriter"
 )
 
 const PlayAgainPercent = 90
@@ -114,6 +115,7 @@ type Datacenter struct {
 	longitude float64
 	playerCount int
 	playerQueue []*ActivePlayer
+	averageLatency float64
 }
 
 var datacenters map[uint64]*Datacenter
@@ -369,31 +371,32 @@ func runSimulation() {
 
 		// iterate across all datacenter queues
 
-		for k,v := range datacenters {
+		for datacenterId, datacenter := range datacenters {
 
 			playerCount := 0
 			var matchPlayers [PlayersPerMatch]*ActivePlayer
 
-			for i := range v.playerQueue {
+			for i := range datacenter.playerQueue {
 
-				if v.playerQueue[i].state == PlayerState_Ideal || v.playerQueue[i].state == PlayerState_WarmBody {
-					matchPlayers[playerCount] = v.playerQueue[i]
+				if datacenter.playerQueue[i].state == PlayerState_Ideal || datacenter.playerQueue[i].state == PlayerState_WarmBody {
+					matchPlayers[playerCount] = datacenter.playerQueue[i]
 					playerCount++
 				} else {
 					continue
 				}
 
 				if playerCount == PlayersPerMatch {
-					// start a new match
-					// fmt.Printf("new match in %s ", v.name)
 					for j := 0; j < PlayersPerMatch; j++ {
-						// fmt.Printf("%d ", matchPlayers[j].counter)
 						matchPlayers[j].state = PlayerState_Playing
 						matchPlayers[j].counter = 0
-						matchPlayers[j].datacenterId = k
-						v.playerCount++
+						matchPlayers[j].datacenterId = datacenterId
+						datacenter.playerCount++
+						for k := range matchPlayers[j].datacenterCosts {
+							if matchPlayers[j].datacenterCosts[k].datacenterId == datacenterId {
+								datacenter.averageLatency += (matchPlayers[j].datacenterCosts[k].cost - datacenter.averageLatency) * 0.05
+							}
+						}
 					}
-					// fmt.Printf("\n")
 					playerCount = 0
 				}
 
@@ -401,13 +404,13 @@ func runSimulation() {
 
 			newPlayerQueue := make([]*ActivePlayer, 0, 1024)
 
-			for i := range v.playerQueue {
-				if v.playerQueue[i].state == PlayerState_Ideal {
-					newPlayerQueue = append(newPlayerQueue, v.playerQueue[i])
+			for i := range datacenter.playerQueue {
+				if datacenter.playerQueue[i].state == PlayerState_Ideal {
+					newPlayerQueue = append(newPlayerQueue, datacenter.playerQueue[i])
 				}
 			}
 
-			v.playerQueue = newPlayerQueue
+			datacenter.playerQueue = newPlayerQueue
 		}
 
 		// feed warm bodies back into datacenter queues to fill matches
@@ -433,11 +436,11 @@ func runSimulation() {
 
 		time := secondsToTime(seconds)
 
-		fmt.Printf("--------------------------------------------------\n")
+		fmt.Printf("--------------------------------------------------------------------------------\n")
 
 		fmt.Printf("%s: %d new, %d ideal, %d warmbody, %d playing, %d bots\n", time.Format("2006-01-02 15:04:05"), numNew, numIdeal, numWarmBody, numPlaying, numBots)
 
-		fmt.Printf("--------------------------------------------------\n")
+		fmt.Printf("--------------------------------------------------------------------------------\n")
 
 		datacenterArray := make([]*Datacenter, len(datacenters))
 
@@ -451,9 +454,15 @@ func runSimulation() {
 			return datacenterArray[i].playerCount > datacenterArray[j].playerCount
 		})
 
+		w := new(tabwriter.Writer)
+	
+		w.Init(os.Stdout, 8, 8, 0, '\t', 0)
+	
 		for i := range datacenterArray {
-			fmt.Printf("%d\t\t%s\n", datacenterArray[i].playerCount, datacenterArray[i].name)
+			fmt.Fprintf(w, "%d\t%s\t%.1fms\t\n", datacenterArray[i].playerCount, datacenterArray[i].name, datacenterArray[i].averageLatency)
 		}
+
+		w.Flush()
 
 		seconds++
 	}
