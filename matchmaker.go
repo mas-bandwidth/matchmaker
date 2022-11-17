@@ -45,6 +45,7 @@ import (
 	"strconv"
 )
 
+const OneIn = 15
 const PlayersPerMatch = 4
 const SecondsPerDay = 86400
 const MinLatitude = -90
@@ -60,6 +61,13 @@ type NewPlayerData struct {
 }
 
 var newPlayerData [][]NewPlayerData
+
+func chance(n int) bool {
+	if rand.Intn(n) == 0 {
+		return true
+	}
+	return false
+}
 
 func randomInt(min int, max int) int {
 	difference := max - min
@@ -219,6 +227,10 @@ func runSimulation() {
 
 		for j := range newPlayerData[i] {
 			
+			if !chance(OneIn) {
+				continue
+			}
+
 			activePlayer := ActivePlayer{}
 			
 			activePlayer.latitude = newPlayerData[i][j].latitude

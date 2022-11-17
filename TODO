@@ -14,9 +14,13 @@ DONE
 
 	Lower probability of new players.
 
+	Parse the csv for real player data.
+
 TODO
 
-	Parse the csv for real player data.
+	Implement some strategy so I can sample a certain percentage chance of grabbing samples 1 in n chance.
+
+	-----------
 
 	Track the number of seconds players wait in matchmaking.
 
