@@ -106,7 +106,7 @@ func haversineDistance(lat1 float64, long1 float64, lat2 float64, long2 float64)
 }
 
 func kilometersToRTT(kilometers float64) float64 {
-	return kilometers / 299792.458 * 1000.0 * 2.0 * 2.0 // be conservative
+	return kilometers / 299792.458 * 1000.0 * 2.0 * ( 3.0 / 2.0 ) // speed of light is 2/3rds in fiber optic cables
 }
 
 type Datacenter struct {
@@ -116,6 +116,7 @@ type Datacenter struct {
 	playerCount int
 	playerQueue []*ActivePlayer
 	averageLatency float64
+	averageMatchingTime float64
 }
 
 var datacenters map[uint64]*Datacenter
@@ -387,15 +388,16 @@ func runSimulation() {
 
 				if playerCount == PlayersPerMatch {
 					for j := 0; j < PlayersPerMatch; j++ {
-						matchPlayers[j].state = PlayerState_Playing
-						matchPlayers[j].counter = 0
-						matchPlayers[j].datacenterId = datacenterId
 						datacenter.playerCount++
 						for k := range matchPlayers[j].datacenterCosts {
 							if matchPlayers[j].datacenterCosts[k].datacenterId == datacenterId {
 								datacenter.averageLatency += (matchPlayers[j].datacenterCosts[k].cost - datacenter.averageLatency) * 0.05
+								datacenter.averageMatchingTime += (float64(matchPlayers[j].counter) - datacenter.averageMatchingTime) * 0.01
 							}
 						}
+						matchPlayers[j].state = PlayerState_Playing
+						matchPlayers[j].datacenterId = datacenterId
+						matchPlayers[j].counter = 0
 					}
 					playerCount = 0
 				}
@@ -456,10 +458,10 @@ func runSimulation() {
 
 		w := new(tabwriter.Writer)
 	
-		w.Init(os.Stdout, 8, 8, 0, '\t', 0)
+		w.Init(os.Stdout, 24, 8, 0, '\t', 0)
 	
 		for i := range datacenterArray {
-			fmt.Fprintf(w, "%d\t%s\t%.1fms\t\n", datacenterArray[i].playerCount, datacenterArray[i].name, datacenterArray[i].averageLatency)
+			fmt.Fprintf(w, "%d\t%s\t%.1fms\t%.1fs\t\n", datacenterArray[i].playerCount, datacenterArray[i].name, datacenterArray[i].averageLatency, datacenterArray[i].averageMatchingTime)
 		}
 
 		w.Flush()

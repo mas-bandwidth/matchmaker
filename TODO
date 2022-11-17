@@ -1,41 +1,7 @@
 DONE
 
-	Define set of locations
-
-	Bring haversine function across
-
-	Implement latency to datacenter function (approximate for now...)
-
-	Advertise as available to datacenters < 50ms latency for the first n seconds.	
-
-	Add active players to to queues per-datacenter when they go into "ideal" state.
-
-	Walk set of datacenters (random order) and iterate across all players in that queue, and send them off into games.
-
-	Lower probability of new players.
-
-	Parse the csv for real player data.
-
-	Implement some strategy so I can sample a certain percentage chance of grabbing samples 1 in n chance.
-
-	Implement logic to go into playing state
-
-	Implement logic to go into bot matches
-
-	Track the number of seconds players wait in matchmaking and print it out for each player when the match starts.
-
-	Stick the player id inside the active player (for debugging)
-
-	Feed warm body players back into matchmaking queues (basic, any datacenter that needs player...)
-
-	Track number of players per-datacenter
-
 TODO
-
-	Track average latency per-datacenter
 
 	--------
 
 	Integrate per-datacenter latency map
-
-	Implement regions
