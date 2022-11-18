@@ -6,9 +6,13 @@ DONE
 
 	Load the data in for latency maps per-datecenter by name
 
+	Implement code to load the latency map and transform into array of float32 values.
+
 TODO
 
-	Implement code to load the latency map and transform into array of float32 values.
+	Implement code to get latency map value at lat/long, with clamping for latitude in range [-90,+90] during lookup, and wraparound for longitude such that values -1 turns into 360-1, and values 361 turns into 1, etc.
+
+	-----
 
 	Implement code to transform the latency map so that it "widens" via a filter, eg. take average of neighbours, for any lat/long square that is 0.0 and has any non-0.0 neighbours, on load.
 

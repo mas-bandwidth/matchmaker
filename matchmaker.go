@@ -183,6 +183,7 @@ func initialize() {
 	datacenters[110] = &Datacenter{name: "saltlakecity", latitude: 40.758701, longitude: -111.876183}
 	datacenters[111] = &Datacenter{name: "losangeles", latitude: 34.052235, longitude: -118.243683}
 	datacenters[112] = &Datacenter{name: "ashburn", latitude: 39.0403, longitude: -77.4852}
+	datacenters[112] = &Datacenter{name: "phoenix", latitude: 33.448376, longitude: -112.074036}
 
 	datacenters[200] = &Datacenter{name: "saopaulo", latitude: -23.533773, longitude: -46.625290}
 	datacenters[201] = &Datacenter{name: "santiago", latitude: -33.447487, longitude: -70.673676}
