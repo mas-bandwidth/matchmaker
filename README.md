@@ -12,15 +12,13 @@ Set the player state to "NEW".
 
 For players in state "NEW", 
 	
-* Find the set of datacenters for the player that are acceptable (eg. latency < X, and if multiple datacenters are < X, find the set of datacenters within within +~10ms of lowest latency datacenter). "Donate" these players to the queue of each the datacenters that are acceptable, and take the first match that comes back.
-
-* If there are acceptable datacenters for this player, they go into state "IDEAL". Our goal is to help them find players to play with them with priority on the BEST servers for them possible.
+* Find the set of datacenters for the player that are acceptable (eg. latency < X, and if multiple datacenters are < X, find the set of datacenters within within +Y ms of lowest latency datacenter). Put the player into "IDEAL" state and donate the players to the queue of each datacenters that is acceptable, taking first match that comes back from any acceptable datacenter.
 
 * Players in "IDEAL" state should quickly find a game within 60 seconds and go to "PLAYING" state. 
 
 * Any players in "IDEAL" state that don't find a game within 60 seconds, go to "WARMBODY" state.
 
-If no datacenters are acceptable for the new player, then they are probably outside region, not near any acceptable servers (eg. nothing < 50ms). Put these players into "WARMBODY" state.
+If no datacenters are acceptable for the new player, then they possibly outside region, or at least near any acceptable servers (eg. nothing < 50ms). Put these players into "WARMBODY" state.
 
 * This is a pincer. People close to server should generally be weighted heavily to find a match there, people far away from any server should be warm bodies to fill games within the region, with some preference towards filling games closer to them of course, but in an iterative fashion, such that they relax over time.
 
