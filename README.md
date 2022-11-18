@@ -12,7 +12,7 @@ Set the player state to "NEW".
 
 For players in state "NEW", 
 	
-Find the lowest latency datacenters for the player.
+Find the lowest latency datacenter for the player.
 
 If this datacenter is < 50ms then it is considered ideal. Find any other datacenters within +10ms of the lowest latency datacenter and call this the set of "ideal datacenters" for the player.
 
