@@ -46,11 +46,11 @@ import (
 	// "text/tabwriter"
 )
 
-const PlayAgainPercent = 90
+const PlayAgainPercent = 70
 const MatchLengthSeconds = 198
 const IdealTime = 60
-const WarmBodyTime = 60
-const OneIn = 20
+const WarmBodyTime = 120
+const OneIn = 10
 const PlayersPerMatch = 4
 const SecondsPerDay = 86400
 const MinLatitude = -90
@@ -234,6 +234,7 @@ func runSimulation() {
 
 	var seconds uint64
 	var playerId uint64
+	var totalBots uint64
 
 	for {
 
@@ -280,7 +281,6 @@ func runSimulation() {
 		numIdeal := 0
 		numWarmBody := 0
 		numPlaying := 0
-		numBots := 0
 
 		warmBodies := make(map[uint64]*ActivePlayer)
 
@@ -331,6 +331,7 @@ func runSimulation() {
 				if activePlayers[i].counter > WarmBodyTime {
 					activePlayers[i].state = PlayerState_Bots
 					activePlayers[i].counter = MatchLengthSeconds
+					totalBots++
 				} else {
 					warmBodies[i] = activePlayers[i]
 				}
@@ -354,12 +355,9 @@ func runSimulation() {
 
 			} else if activePlayers[i].state == PlayerState_Bots {
 
-				numBots++
-
 				activePlayers[i].counter++
 
 				if activePlayers[i].counter > MatchLengthSeconds {
-					datacenters[activePlayers[i].datacenterId].playerCount--
 					if percentChance(PlayAgainPercent) {
 						activePlayers[i].state = PlayerState_New
 						activePlayers[i].counter = 0
@@ -444,11 +442,8 @@ func runSimulation() {
 
 		time := secondsToTime(seconds)
 
-		fmt.Printf("--------------------------------------------------------------------------------\n")
-
-		fmt.Printf("%s: %d playing, %d new, %d ideal, %d warmbody, %d bots\n", time.Format("2006-01-02 15:04:05"), numPlaying, numNew, numIdeal, numWarmBody, numBots)
-
-		fmt.Printf("--------------------------------------------------------------------------------\n")
+		fmt.Printf("--------------------------------------------------------------------------------------------\n")
+		fmt.Printf("%s: %d playing, %d new, %d ideal, %d warmbody, %d bot matches\n", time.Format("2006-01-02 15:04:05"), numPlaying, numNew, numIdeal, numWarmBody, totalBots)
 
 		/*
 		datacenterArray := make([]*Datacenter, len(datacenters))
