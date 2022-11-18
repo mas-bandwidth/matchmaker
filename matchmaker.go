@@ -44,11 +44,13 @@ import (
 	"strings"
 	"strconv"
 	"text/tabwriter"
+	"encoding/binary"
 )
 
 const LatencyMapWidth = 360
 const LatencyMapHeight = 180
-const LatencyMapBytes = LatencyMapWidth * LatencyMapHeight * 4
+const LatencyMapSize = LatencyMapWidth * LatencyMapHeight
+const LatencyMapBytes = LatencyMapSize * 4
 const PlayAgainPercent = 70
 const MatchLengthSeconds = 198
 const IdealTime = 60
@@ -121,6 +123,7 @@ type Datacenter struct {
 	playerQueue []*ActivePlayer
 	averageLatency float64
 	averageMatchingTime float64
+	latencyMap []float32
 }
 
 var datacenters map[uint64]*Datacenter
@@ -212,7 +215,14 @@ func initialize() {
 			panic(fmt.Sprintf("latency map %s is invalid size (%d bytes)", filename, len(data)))
 		}
 		fmt.Printf("loaded %s\n", filename)
-		// todo: process the latency binfile and extract float32 array
+		index := 0
+		floatArray := make([]float32, LatencyMapSize)
+		for i := 0; i < LatencyMapSize; i++ {
+			integerValue := binary.LittleEndian.Uint32(data[index:index+4])
+			floatArray[i] = math.Float32frombits(integerValue)
+			index += 4
+		}
+		v.latencyMap = floatArray
 	}
 
     // create active players hash (empty)
