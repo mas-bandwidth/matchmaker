@@ -43,9 +43,12 @@ import (
 	"bufio"
 	"strings"
 	"strconv"
-	// "text/tabwriter"
+	"text/tabwriter"
 )
 
+const LatencyMapWidth = 360
+const LatencyMapHeight = 180
+const LatencyMapBytes = LatencyMapWidth * LatencyMapHeight * 4
 const PlayAgainPercent = 70
 const MatchLengthSeconds = 198
 const IdealTime = 60
@@ -190,8 +193,26 @@ func initialize() {
 
 	datacenters[400] = &Datacenter{name: "sydney", latitude: -33.865143, longitude: 151.209900}
 
+	datacenters[500] = &Datacenter{name: "johannesburg", latitude: -26.195246, longitude: 28.034088}
+
 	for _,v := range datacenters {
 		v.playerQueue = make([]*ActivePlayer, 0, 1024)
+	}
+
+	// load latency maps for each datacenter
+
+	for _,v := range datacenters {
+		datacenterName := v.name
+		filename := fmt.Sprintf("latency_%s.bin", datacenterName)
+		data, err := os.ReadFile(filename)
+		if err != nil {
+			continue
+		}
+		if len(data) != LatencyMapBytes {
+			panic(fmt.Sprintf("latency map %s is invalid size (%d bytes)", filename, len(data)))
+		}
+		fmt.Printf("loaded %s\n", filename)
+		// todo: process the latency binfile and extract float32 array
 	}
 
     // create active players hash (empty)
@@ -444,8 +465,8 @@ func runSimulation() {
 
 		fmt.Printf("--------------------------------------------------------------------------------------------\n")
 		fmt.Printf("%s: %d playing, %d new, %d ideal, %d warmbody, %d bot matches\n", time.Format("2006-01-02 15:04:05"), numPlaying, numNew, numIdeal, numWarmBody, totalBots)
+		fmt.Printf("--------------------------------------------------------------------------------------------\n")
 
-		/*
 		datacenterArray := make([]*Datacenter, len(datacenters))
 
 		index := 0
@@ -453,6 +474,10 @@ func runSimulation() {
 			datacenterArray[index] = v
 			index++
 		}
+
+		sort.SliceStable(datacenterArray[:], func(i, j int) bool {
+			return datacenterArray[i].name < datacenterArray[j].name
+		})
 
 		sort.SliceStable(datacenterArray[:], func(i, j int) bool {
 			return datacenterArray[i].playerCount > datacenterArray[j].playerCount
@@ -467,7 +492,6 @@ func runSimulation() {
 		}
 
 		w.Flush()
-		*/
 
 		seconds++
 	}
