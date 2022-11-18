@@ -2,6 +2,8 @@ DONE
 
 TODO
 
-	--------
+	Implement the widening in the warm body state
 
 	Integrate per-datacenter latency map
+
+	Implement some sort of visualization (eg. output to portal cruncher?)

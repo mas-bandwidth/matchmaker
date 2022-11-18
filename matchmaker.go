@@ -43,14 +43,14 @@ import (
 	"bufio"
 	"strings"
 	"strconv"
-	"text/tabwriter"
+	// "text/tabwriter"
 )
 
 const PlayAgainPercent = 90
 const MatchLengthSeconds = 198
 const IdealTime = 60
 const WarmBodyTime = 60
-const OneIn = 10
+const OneIn = 20
 const PlayersPerMatch = 4
 const SecondsPerDay = 86400
 const MinLatitude = -90
@@ -59,6 +59,7 @@ const MinLongitude = -180
 const MaxLongitude = +180
 const IdealCostThreshold = 50
 const IdealCostSpread = 10
+const WarmBodyCostSpread = 10
 
 type NewPlayerData struct {
 	latitude float64
@@ -418,8 +419,13 @@ func runSimulation() {
 		// feed warm bodies back into datacenter queues to fill matches
 
 		for _, warmBody := range warmBodies {
-			for _, datacenter := range datacenters {
-				if len(datacenter.playerQueue) > 0 && len(datacenter.playerQueue) < PlayersPerMatch {
+			t := float64(warmBody.counter) / WarmBodyTime
+			a := warmBody.datacenterCosts[0].cost + WarmBodyCostSpread
+			b := warmBody.datacenterCosts[len(warmBody.datacenterCosts)-1].cost - a
+			c := a * t*2 * b
+			for datacenterId, datacenter := range datacenters {
+				datacenterCost := warmBody.datacenterCostMap[datacenterId].cost
+				if datacenterCost <= c && len(datacenter.playerQueue) > 0 && len(datacenter.playerQueue) < PlayersPerMatch {
 					found := false
 					for i := range datacenter.playerQueue {
 						if datacenter.playerQueue[i].playerId == warmBody.playerId {
@@ -440,10 +446,11 @@ func runSimulation() {
 
 		fmt.Printf("--------------------------------------------------------------------------------\n")
 
-		fmt.Printf("%s: %d new, %d ideal, %d warmbody, %d playing, %d bots\n", time.Format("2006-01-02 15:04:05"), numNew, numIdeal, numWarmBody, numPlaying, numBots)
+		fmt.Printf("%s: %d playing, %d new, %d ideal, %d warmbody, %d bots\n", time.Format("2006-01-02 15:04:05"), numPlaying, numNew, numIdeal, numWarmBody, numBots)
 
 		fmt.Printf("--------------------------------------------------------------------------------\n")
 
+		/*
 		datacenterArray := make([]*Datacenter, len(datacenters))
 
 		index := 0
@@ -465,6 +472,7 @@ func runSimulation() {
 		}
 
 		w.Flush()
+		*/
 
 		seconds++
 	}
