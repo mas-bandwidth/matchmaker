@@ -16,4 +16,4 @@ DONE
 
 TODO
 
-	Implement code to transform the latency map so that it "widens" via a filter, eg. take average of neighbours, for any lat/long square that is 0.0 and has any non-0.0 neighbours, on load.
+	Transform the latency map so that it "widens" via a filter, eg. take average of neighbours, for any lat/long square that is 0.0 and has any non-0.0 neighbours, on load.
