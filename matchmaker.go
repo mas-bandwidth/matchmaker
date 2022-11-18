@@ -183,8 +183,12 @@ func initialize() {
 	datacenters[110] = &Datacenter{name: "saltlakecity", latitude: 40.758701, longitude: -111.876183}
 	datacenters[111] = &Datacenter{name: "losangeles", latitude: 34.052235, longitude: -118.243683}
 	datacenters[112] = &Datacenter{name: "ashburn", latitude: 39.0403, longitude: -77.4852}
-	datacenters[112] = &Datacenter{name: "phoenix", latitude: 33.448376, longitude: -112.074036}
-	datacenters[112] = &Datacenter{name: "denver", latitude: 39.742043, longitude: -104.991531}
+	datacenters[113] = &Datacenter{name: "phoenix", latitude: 33.448376, longitude: -112.074036}
+	datacenters[114] = &Datacenter{name: "denver", latitude: 39.742043, longitude: -104.991531}
+	datacenters[115] = &Datacenter{name: "houston", latitude: 29.749907, longitude: -95.358421}
+	datacenters[116] = &Datacenter{name: "tampa", latitude: 27.964157, longitude: -82.452606}
+	datacenters[117] = &Datacenter{name: "vancouver", latitude: 49.246292, longitude: -123.116226}
+	datacenters[118] = &Datacenter{name: "stlouis", latitude: 38.627003, longitude: -90.199402}
 
 	datacenters[200] = &Datacenter{name: "saopaulo", latitude: -23.533773, longitude: -46.625290}
 	datacenters[201] = &Datacenter{name: "santiago", latitude: -33.447487, longitude: -70.673676}
@@ -195,6 +199,7 @@ func initialize() {
 	datacenters[303] = &Datacenter{name: "luxembourg", latitude: 49.611622, longitude: 6.131935}
 	datacenters[304] = &Datacenter{name: "strasbourg", latitude: 48.580002, longitude: 7.750000}
 	datacenters[305] = &Datacenter{name: "madrid", latitude: 40.416775, longitude: -3.703790}
+	datacenters[306] = &Datacenter{name: "barcelona", latitude: 41.390205, longitude: 2.154007}
 
 	datacenters[400] = &Datacenter{name: "sydney", latitude: -33.865143, longitude: 151.209900}
 
@@ -211,6 +216,7 @@ func initialize() {
 		filename := fmt.Sprintf("latency_%s.bin", datacenterName)
 		data, err := os.ReadFile(filename)
 		if err != nil {
+			panic(filename)
 			continue
 		}
 		if len(data) != LatencyMapBytes {
