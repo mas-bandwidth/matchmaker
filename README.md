@@ -30,4 +30,4 @@ If no datacenters are acceptable for the new player, then they possibly outside 
 
 * Players in "WARMBODY" state that do not find a match within n seconds, go into "BOTS" state.
 
-* Players in "PLAYING" or "BOTS" state return to "NEW" state at the end of the match.
+Players in "PLAYING" or "BOTS" state return to "NEW" state at the end of the match.
