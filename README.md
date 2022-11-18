@@ -2,7 +2,7 @@
 
 ## Goal
 
-Find low latency for players as quickly as possible.
+Find low latency matches as quickly as possible.
 
 ## Strategy
 
