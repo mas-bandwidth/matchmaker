@@ -14,7 +14,7 @@ For players in state "NEW",
 	
 Find the set of datacenters for the player that are acceptable (eg. latency < X, and if multiple datacenters are < X, find the set of datacenters within within +Y ms of lowest latency datacenter). 
 
-* If one or more acceptable datacenters exist, put the player into "IDEAL" state and add the player to the queue of each acceptable datacenter.
+* If one or more acceptable datacenters exist, put the player into "IDEAL" state and add the player to the queue of each acceptable datacenter. Take the first match that comes back from any of the acceptable datacenters.
 
 * Players in "IDEAL" state should quickly find a game within 60 seconds and go to "PLAYING" state. 
 
