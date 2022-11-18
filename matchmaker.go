@@ -47,6 +47,7 @@ import (
 	"encoding/binary"
 )
 
+const ConservativeFactor = 3
 const LatencyMapWidth = 360
 const LatencyMapHeight = 180
 const LatencyMapSize = LatencyMapWidth * LatencyMapHeight
@@ -113,6 +114,30 @@ func haversineDistance(lat1 float64, long1 float64, lat2 float64, long2 float64)
 
 func kilometersToRTT(kilometers float64) float64 {
 	return kilometers / 299792.458 * 1000.0 * 2.0 * ( 3.0 / 2.0 ) // speed of light is 2/3rds in fiber optic cables
+}
+
+func datacenterRTT(datacenter *Datacenter, playerLatitude float64, playerLongitude float64) float64 {
+	lat := playerLatitude
+	long := playerLatitude
+	if lat < MinLatitude {
+		lat = MinLatitude
+	}
+	if lat > MaxLatitude {
+		lat = MaxLatitude
+	}
+	if long < 0 {
+		long = MaxLongitude + long
+	}
+	long = math.Mod(long, LatencyMapWidth)
+	x := int(math.Floor(long)) + MaxLongitude
+	y := int(math.Floor(lat)) + MaxLatitude
+	index := x + y * LatencyMapWidth
+	if datacenter.latencyMap != nil && datacenter.latencyMap[index] > 0.0 {
+		return float64(datacenter.latencyMap[index])
+	} else {
+		kilometers := haversineDistance(playerLatitude, playerLongitude, datacenter.latitude, datacenter.longitude)
+		return kilometersToRTT(kilometers) * ConservativeFactor
+	}
 }
 
 type Datacenter struct {
@@ -297,8 +322,7 @@ func runSimulation() {
 			
 			index := 0
 			for k,v := range datacenters {
-				kilometers := haversineDistance(activePlayer.latitude, activePlayer.longitude, v.latitude, v.longitude)
-				milliseconds := kilometersToRTT(kilometers)
+				milliseconds := datacenterRTT(v, activePlayer.latitude, activePlayer.longitude)
 				activePlayer.datacenterCostMap[k] = DatacenterCostMapEntry{cost: milliseconds, index: index}
 				activePlayer.datacenterCosts[index].datacenterId = k
 				activePlayer.datacenterCosts[index].cost = milliseconds

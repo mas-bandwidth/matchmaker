@@ -8,15 +8,12 @@ DONE
 
 	Implement code to load the latency map and transform into array of float32 values.
 
-TODO
+	Finalize set of cities for simulator
 
 	Implement code to get latency map value at lat/long, with clamping for latitude in range [-90,+90] during lookup, and wraparound for longitude such that values -1 turns into 360-1, and values 361 turns into 1, etc.
 
-	-----
-
-	Implement code to transform the latency map so that it "widens" via a filter, eg. take average of neighbours, for any lat/long square that is 0.0 and has any non-0.0 neighbours, on load.
-
 	Implement code to look up the latency given a datacenter and player lat/long, first looking into the latency map, and then if the latency map entry is 0.0 using a conservative estimate according to speed of light * 3 at distance.
 
-	Implement some sort of visualization (eg. output to portal cruncher?)
- 
+TODO
+
+	Implement code to transform the latency map so that it "widens" via a filter, eg. take average of neighbours, for any lat/long square that is 0.0 and has any non-0.0 neighbours, on load.
