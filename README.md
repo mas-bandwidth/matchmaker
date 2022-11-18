@@ -16,7 +16,7 @@ Find the lowest latency datacenters for the player.
 
 If this datacenter is < 50ms then it is considered ideal. Find any other datacenters within +10ms of the lowest latency datacenter and call them "ideal datacenters".
 
-* If one or more ideal datacenters exist, put the player into "IDEAL" state and add the player to the queue of each acceptable datacenter. Take the first match that comes back from ANY of the ideal datacenters. The goal is for players to always play on the ideal datacenter for them, according to latency where possible.
+* If one or more ideal datacenters exist, put the player into "IDEAL" state and add the player to the queue of each datacenter in the ideal set. Take the first match that comes back from ANY of the ideal datacenters.
 
 * Players in "IDEAL" state should quickly find a game within 60 seconds and go to "PLAYING" state. 
 
