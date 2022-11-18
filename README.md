@@ -22,9 +22,9 @@ If this datacenter is < 50ms then it is considered ideal. Find any other datacen
 
 * Any players in "IDEAL" state that don't find a game within 60 seconds, go to "WARMBODY" state.
 
-If no datacenters are acceptable for the new player, then they possibly outside region, or at they are not near any ideal servers for them (eg. nothing < 50ms). Put these players into "WARMBODY" state
+If no datacenters are acceptable for the new player, then they possibly outside region, or at least they are not near any ideal servers (eg. nothing < 50ms). Put these players into "WARMBODY" state
 
-* This is a pincer. People close to server should generally be weighted heavily to find a match there, people far away from any server should be warm bodies to fill games within the region, with some preference towards filling games closer to them of course, but in an iterative fashion, such that they relax over time.
+* This is a pincer. People close to server should generally be weighted heavily to find a match there, people far away from any server should be warm bodies to fill games within the region, with some preference towards filling games closer to them of course, but in an iterative fashion, such that they relax over time...
 
 * Potentially, the players in the warmbody queue will iterate across all datacenters within their current (expanding) acceptable latency range, and look for any partial games they can join that let those games start.
 
