@@ -64,7 +64,7 @@ const MinLatitude = -90
 const MaxLatitude = +90
 const MinLongitude = -180
 const MaxLongitude = +180
-const IdealCostThreshold = 35
+const IdealCostThreshold = 25
 const IdealCostSpread = 10
 const ExpandMaxCost = 100
 const ExpandCostSpread = 10
@@ -162,7 +162,7 @@ func initialize() {
 
 	// load the players.csv file and parse it
 
-    f, err := os.Open("players.csv")
+    f, err := os.Open("data/players.csv")
     if err != nil {
         panic(err)
     }
@@ -241,7 +241,7 @@ func initialize() {
 
 	for _,v := range datacenters {
 		datacenterName := v.name
-		filename := fmt.Sprintf("latency_%s.bin", datacenterName)
+		filename := fmt.Sprintf("data/latency_%s.bin", datacenterName)
 		data, err := os.ReadFile(filename)
 		if err != nil {
 			panic(filename)
