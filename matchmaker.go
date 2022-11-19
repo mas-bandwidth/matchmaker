@@ -47,15 +47,16 @@ import (
 	"encoding/binary"
 )
 
-const ConservativeFactor = 3
+const ConservativeFactor = 2
 const LatencyMapWidth = 360
 const LatencyMapHeight = 180
 const LatencyMapSize = LatencyMapWidth * LatencyMapHeight
 const LatencyMapBytes = LatencyMapSize * 4
-const PlayAgainPercent = 70
+const PlayAgainPercent = 95
 const MatchLengthSeconds = 198
 const IdealTime = 60
-const WarmBodyTime = 120
+const ExpandTime = 60
+const WarmBodyTime = 60
 const OneIn = 10
 const PlayersPerMatch = 4
 const SecondsPerDay = 86400
@@ -63,9 +64,11 @@ const MinLatitude = -90
 const MaxLatitude = +90
 const MinLongitude = -180
 const MaxLongitude = +180
-const IdealCostThreshold = 50
+const IdealCostThreshold = 35
 const IdealCostSpread = 10
-const WarmBodyCostSpread = 10
+const ExpandMaxCost = 100
+const ExpandCostSpread = 10
+const WarmBodyCostThreshold = 100
 
 type NewPlayerData struct {
 	latitude float64
@@ -267,9 +270,10 @@ func initialize() {
 
 const PlayerState_New = 0
 const PlayerState_Ideal = 1
-const PlayerState_WarmBody = 2
-const PlayerState_Playing = 3
-const PlayerState_Bots = 4
+const PlayerState_Expand = 2
+const PlayerState_WarmBody = 3
+const PlayerState_Playing = 4
+const PlayerState_Bots = 5
 
 type DatacenterCostMapEntry struct {
 	index int
@@ -342,6 +346,7 @@ func runSimulation() {
 
 		numNew := 0
 		numIdeal := 0
+		numExpand := 0
 		numWarmBody := 0
 		numPlaying := 0
 
@@ -353,7 +358,9 @@ func runSimulation() {
 
 				numNew++
 
-				if activePlayers[i].datacenterCosts[0].cost <= IdealCostThreshold {
+				cost := activePlayers[i].datacenterCosts[0].cost
+
+				if cost <= IdealCostThreshold {
 
 					activePlayers[i].state = PlayerState_Ideal
 
@@ -366,6 +373,11 @@ func runSimulation() {
 							datacenters[datacenterId].playerQueue = append(datacenters[datacenterId].playerQueue, activePlayers[i])
 						}
 					}
+
+				} else if cost < WarmBodyCostThreshold {
+
+					activePlayers[i].state = PlayerState_Expand
+					activePlayers[i].counter = 0
 
 				} else {
 
@@ -381,6 +393,39 @@ func runSimulation() {
 				activePlayers[i].counter++
 
 				if activePlayers[i].counter > IdealTime {
+					activePlayers[i].state = PlayerState_WarmBody
+					activePlayers[i].counter = 0
+				}
+
+			} else if activePlayers[i].state == PlayerState_Expand {
+
+				numExpand++
+
+				activePlayers[i].counter++
+
+				t := float64(activePlayers[i].counter) / ExpandTime
+
+				expandStartCost := activePlayers[i].datacenterCosts[0].cost + ExpandCostSpread
+
+				cost := expandStartCost + t*(ExpandMaxCost-expandStartCost)
+
+				for datacenterId, datacenter := range datacenters {
+					datacenterCost := activePlayers[i].datacenterCostMap[datacenterId].cost
+					if datacenterCost <= cost {
+						found := false
+						for j := range datacenter.playerQueue {
+							if datacenter.playerQueue[j].playerId == activePlayers[i].playerId {
+								found = true
+								break
+							}
+						}
+						if !found {
+							datacenter.playerQueue = append(datacenter.playerQueue, activePlayers[i])
+						}
+					}
+				}
+
+				if activePlayers[i].counter > ExpandTime {
 					activePlayers[i].state = PlayerState_WarmBody
 					activePlayers[i].counter = 0
 				}
@@ -441,7 +486,7 @@ func runSimulation() {
 
 			for i := range datacenter.playerQueue {
 
-				if datacenter.playerQueue[i].state == PlayerState_Ideal || datacenter.playerQueue[i].state == PlayerState_WarmBody {
+				if datacenter.playerQueue[i].state == PlayerState_Ideal || datacenter.playerQueue[i].state == PlayerState_Expand || datacenter.playerQueue[i].state == PlayerState_WarmBody {
 					matchPlayers[playerCount] = datacenter.playerQueue[i]
 					playerCount++
 				} else {
@@ -480,23 +525,16 @@ func runSimulation() {
 		// feed warm bodies back into datacenter queues to fill matches
 
 		for _, warmBody := range warmBodies {
-			t := float64(warmBody.counter) / WarmBodyTime
-			a := warmBody.datacenterCosts[0].cost + WarmBodyCostSpread
-			b := warmBody.datacenterCosts[len(warmBody.datacenterCosts)-1].cost - a
-			c := a * t*2 * b
-			for datacenterId, datacenter := range datacenters {
-				datacenterCost := warmBody.datacenterCostMap[datacenterId].cost
-				if datacenterCost <= c && len(datacenter.playerQueue) > 0 && len(datacenter.playerQueue) < PlayersPerMatch {
-					found := false
-					for i := range datacenter.playerQueue {
-						if datacenter.playerQueue[i].playerId == warmBody.playerId {
-							found = true
-							break
-						}
+			for _, datacenter := range datacenters {
+				found := false
+				for i := range datacenter.playerQueue {
+					if datacenter.playerQueue[i].playerId == warmBody.playerId {
+						found = true
+						break
 					}
-					if !found {
-						datacenter.playerQueue = append(datacenter.playerQueue, warmBody)
-					}
+				}
+				if !found {
+					datacenter.playerQueue = append(datacenter.playerQueue, warmBody)
 				}
 			}
 		}
@@ -506,7 +544,8 @@ func runSimulation() {
 		time := secondsToTime(seconds)
 
 		fmt.Printf("--------------------------------------------------------------------------------------------\n")
-		fmt.Printf("%s: %d playing, %d new, %d ideal, %d warmbody, %d bot matches\n", time.Format("2006-01-02 15:04:05"), numPlaying, numNew, numIdeal, numWarmBody, totalBots)
+		fmt.Printf("%s: %d playing, %d new, %d ideal, %d expand, %d warmbody, %d bot matches\n", time.Format("2006-01-02 15:04:05"), numPlaying, numNew, numIdeal, numExpand, numWarmBody, totalBots)
+
 		fmt.Printf("--------------------------------------------------------------------------------------------\n")
 
 		datacenterArray := make([]*Datacenter, len(datacenters))

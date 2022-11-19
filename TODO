@@ -14,6 +14,11 @@ DONE
 
 	Implement code to look up the latency given a datacenter and player lat/long, first looking into the latency map, and then if the latency map entry is 0.0 using a conservative estimate according to speed of light * 3 at distance.
 
+	Split apart into "Expand" and "WarmBody" states.
+
+	Fixed a bug in expansion calculation as function of t.
+
 TODO
 
 	Transform the latency map so that it "widens" via a filter, eg. take average of neighbours, for any lat/long square that is 0.0 and has any non-0.0 neighbours, on load.
+
