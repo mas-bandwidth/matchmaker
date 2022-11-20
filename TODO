@@ -20,12 +20,4 @@ DONE
 
 TODO
 
-	Write out a CSV with a row for each match.
-
-	This CSV can be processed by data science to extract useful data, eg. distribution of players in a USA state, where they play.
-
-	Ideal latency per-datacenter etc.
-
-	------------
-
 	Transform the latency map so that it "widens" via a filter, eg. take average of neighbours, for any lat/long square that is 0.0 and has any non-0.0 neighbours, on load.
