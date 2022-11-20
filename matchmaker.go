@@ -156,6 +156,9 @@ type Datacenter struct {
 
 var datacenters map[uint64]*Datacenter
 
+var matchesFile *os.File
+var statsFile *os.File
+
 func initialize() {
 
 	fmt.Printf("initializing...\n")
@@ -266,6 +269,18 @@ func initialize() {
 	activePlayers = make(map[uint64]*ActivePlayer)
 
 	fmt.Printf("ready!\n")
+
+	// create output files
+
+	matchesFile, err = os.Create("matches.csv")
+	if err != nil {
+		panic(err)
+	}
+
+	statsFile, err = os.Create("stats.csv")
+	if err != nil {
+		panic(err)
+	}
 }
 
 const PlayerState_New = 0
@@ -293,19 +308,13 @@ type ActivePlayer struct {
 	datacenterCostMap map[uint64]DatacenterCostMapEntry
 	datacenterCosts []DatacenterCostEntry
 	counter int
+	matchingTime float64
 	datacenterId uint64
 }
 
 var activePlayers map[uint64]*ActivePlayer
 
 func runSimulation() {
-
-	output, err := os.Create("output.csv")
-	if err != nil {
-		panic(err)
-	}
-
-	defer output.Close()
 
 	var seconds uint64
 	var playerId uint64
@@ -367,6 +376,9 @@ func runSimulation() {
 
 				cost := activePlayers[i].datacenterCosts[0].cost
 
+				activePlayers[i].counter = 0
+				activePlayers[i].matchingTime = 0.0
+
 				if cost <= IdealCostThreshold {
 
 					activePlayers[i].state = PlayerState_Ideal
@@ -384,12 +396,10 @@ func runSimulation() {
 				} else if cost < WarmBodyCostThreshold {
 
 					activePlayers[i].state = PlayerState_Expand
-					activePlayers[i].counter = 0
 
 				} else {
 
 					activePlayers[i].state = PlayerState_WarmBody
-					activePlayers[i].counter = 0
 
 				}
 
@@ -398,6 +408,7 @@ func runSimulation() {
 				numIdeal++
 
 				activePlayers[i].counter++
+				activePlayers[i].matchingTime += 1.0
 
 				if activePlayers[i].counter > IdealTime {
 					activePlayers[i].state = PlayerState_WarmBody
@@ -409,6 +420,7 @@ func runSimulation() {
 				numExpand++
 
 				activePlayers[i].counter++
+				activePlayers[i].matchingTime += 1.0
 
 				t := float64(activePlayers[i].counter) / ExpandTime
 
@@ -442,6 +454,7 @@ func runSimulation() {
 				numWarmBody++
 
 				activePlayers[i].counter++
+				activePlayers[i].matchingTime += 1.0
 
 				if activePlayers[i].counter > WarmBodyTime {
 					activePlayers[i].state = PlayerState_Bots
@@ -503,15 +516,19 @@ func runSimulation() {
 				if playerCount == PlayersPerMatch {
 					for j := 0; j < PlayersPerMatch; j++ {
 						datacenter.playerCount++
+						latency := 0.0
 						for k := range matchPlayers[j].datacenterCosts {
 							if matchPlayers[j].datacenterCosts[k].datacenterId == datacenterId {
-								datacenter.averageLatency += (matchPlayers[j].datacenterCosts[k].cost - datacenter.averageLatency) * 0.05
-								datacenter.averageMatchingTime += (float64(matchPlayers[j].counter) - datacenter.averageMatchingTime) * 0.01
+								latency = matchPlayers[j].datacenterCosts[k].cost
+								break
 							}
 						}
+						datacenter.averageLatency += (latency - datacenter.averageLatency) * 0.05
+						datacenter.averageMatchingTime += (matchPlayers[j].matchingTime - datacenter.averageMatchingTime) * 0.01
 						matchPlayers[j].state = PlayerState_Playing
 						matchPlayers[j].datacenterId = datacenterId
 						matchPlayers[j].counter = 0
+						fmt.Fprintf(matchesFile, "%d,%.1f,%.1f,%s,%.1f,%.1f\n", seconds, matchPlayers[j].latitude, matchPlayers[j].longitude, datacenter.name, latency, matchPlayers[j].matchingTime)
 					}
 					playerCount = 0
 				}
@@ -552,7 +569,6 @@ func runSimulation() {
 
 		fmt.Printf("%s:\t%6d playing %5d new %5d ideal %5d expand %4d warmbody %4d bot matches\n", time.Format("2006-01-02 15:04:05"), numPlaying, numNew, numIdeal, numExpand, numWarmBody, totalBots)
 
-		/*
 		datacenterArray := make([]*Datacenter, len(datacenters))
 
 		index := 0
@@ -569,19 +585,16 @@ func runSimulation() {
 			return datacenterArray[i].playerCount > datacenterArray[j].playerCount
 		})
 
-		w := new(tabwriter.Writer)
-	
-		w.Init(os.Stdout, 24, 8, 0, '\t', 0)
-	
 		for i := range datacenterArray {
-			fmt.Fprintf(w, "%d\t%s\t%.1fms\t%.1fs\t\n", datacenterArray[i].playerCount, datacenterArray[i].name, datacenterArray[i].averageLatency, datacenterArray[i].averageMatchingTime)
+			fmt.Fprintf(statsFile, "%d,%s,%d,%.1f,%.1f\n", seconds, datacenterArray[i].name, datacenterArray[i].playerCount, datacenterArray[i].averageLatency, datacenterArray[i].averageMatchingTime)
 		}
-
-		w.Flush()
-		*/
 
 		seconds++
 	}
+}
+
+func shutdown() {
+	matchesFile.Close()	
 }
 
 func main() {
@@ -595,6 +608,8 @@ func main() {
 	<-termChan
 
 	fmt.Printf("\nshutting down\n")
+
+	shutdown()
 
 	fmt.Printf("shutdown completed\n")
 }
