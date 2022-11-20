@@ -43,7 +43,7 @@ import (
 	"bufio"
 	"strings"
 	"strconv"
-	"text/tabwriter"
+	// "text/tabwriter"
 	"encoding/binary"
 )
 
@@ -300,6 +300,13 @@ var activePlayers map[uint64]*ActivePlayer
 
 func runSimulation() {
 
+	output, err := os.Create("output.csv")
+	if err != nil {
+		panic(err)
+	}
+
+	defer output.Close()
+
 	var seconds uint64
 	var playerId uint64
 	var totalBots uint64
@@ -543,11 +550,9 @@ func runSimulation() {
 
 		time := secondsToTime(seconds)
 
-		fmt.Printf("--------------------------------------------------------------------------------------------\n")
-		fmt.Printf("%s: %d playing, %d new, %d ideal, %d expand, %d warmbody, %d bot matches\n", time.Format("2006-01-02 15:04:05"), numPlaying, numNew, numIdeal, numExpand, numWarmBody, totalBots)
+		fmt.Printf("%s:\t%6d playing %5d new %5d ideal %5d expand %4d warmbody %4d bot matches\n", time.Format("2006-01-02 15:04:05"), numPlaying, numNew, numIdeal, numExpand, numWarmBody, totalBots)
 
-		fmt.Printf("--------------------------------------------------------------------------------------------\n")
-
+		/*
 		datacenterArray := make([]*Datacenter, len(datacenters))
 
 		index := 0
@@ -573,6 +578,7 @@ func runSimulation() {
 		}
 
 		w.Flush()
+		*/
 
 		seconds++
 	}
