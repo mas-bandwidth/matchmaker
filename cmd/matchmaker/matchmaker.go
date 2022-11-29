@@ -32,17 +32,17 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 	"math"
 	"math/rand"
+	"os"
+	"os/signal"
 	"sort"
-	"bufio"
-	"strings"
 	"strconv"
+	"strings"
+	"syscall"
+	"time"
 	// "text/tabwriter"
 	"encoding/binary"
 )
@@ -71,14 +71,14 @@ const ExpandCostSpread = 10
 const WarmBodyCostThreshold = 100
 
 type NewPlayerData struct {
-	latitude float64
+	latitude  float64
 	longitude float64
 }
 
 var newPlayerData [][]NewPlayerData
 
 func percentChance(threshold int) bool {
-	return randomInt(0,100) <= threshold
+	return randomInt(0, 100) <= threshold
 }
 
 func chance(n int) bool {
@@ -116,7 +116,7 @@ func haversineDistance(lat1 float64, long1 float64, lat2 float64, long2 float64)
 }
 
 func kilometersToRTT(kilometers float64) float64 {
-	return kilometers / 299792.458 * 1000.0 * 2.0 * ( 3.0 / 2.0 ) // speed of light is 2/3rds in fiber optic cables
+	return kilometers / 299792.458 * 1000.0 * 2.0 * (3.0 / 2.0) // speed of light is 2/3rds in fiber optic cables
 }
 
 func datacenterRTT(datacenter *Datacenter, playerLatitude float64, playerLongitude float64) float64 {
@@ -134,7 +134,7 @@ func datacenterRTT(datacenter *Datacenter, playerLatitude float64, playerLongitu
 	long = math.Mod(long, LatencyMapWidth)
 	x := int(math.Floor(long)) + MaxLongitude
 	y := int(math.Floor(lat)) + MaxLatitude
-	index := x + y * LatencyMapWidth
+	index := x + y*LatencyMapWidth
 	if datacenter.latencyMap != nil && datacenter.latencyMap[index] > 0.0 {
 		return float64(datacenter.latencyMap[index])
 	} else {
@@ -144,14 +144,14 @@ func datacenterRTT(datacenter *Datacenter, playerLatitude float64, playerLongitu
 }
 
 type Datacenter struct {
-	name string
-	latitude float64
-	longitude float64
-	playerCount int
-	playerQueue []*ActivePlayer
-	averageLatency float64
+	name                string
+	latitude            float64
+	longitude           float64
+	playerCount         int
+	playerQueue         []*ActivePlayer
+	averageLatency      float64
 	averageMatchingTime float64
-	latencyMap []float32
+	latencyMap          []float32
 }
 
 var datacenters map[uint64]*Datacenter
@@ -165,37 +165,37 @@ func initialize() {
 
 	// load the players.csv file and parse it
 
-    f, err := os.Open("data/players.csv")
-    if err != nil {
-        panic(err)
-    }
+	f, err := os.Open("data/players.csv")
+	if err != nil {
+		panic(err)
+	}
 
-    defer f.Close()
+	defer f.Close()
 
-    scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(f)
 
 	newPlayerData = make([][]NewPlayerData, SecondsPerDay)
 
-    for scanner.Scan() {
-        values := strings.Split(scanner.Text(), ",")
-        if len(values) != 3 {
-        	continue
-        }
-        time := values[0]
-        latitude, _ := strconv.ParseFloat(values[1], 64)
-        longitude, _ := strconv.ParseFloat(values[2], 64)
-        time_values := strings.Split(time, ":")
-        time_hours, _ := strconv.Atoi(time_values[0])
-        time_minutes, _ := strconv.Atoi(time_values[1])
-        time_seconds, _ := strconv.Atoi(time_values[2])
-        seconds := uint64(0)
-        seconds += uint64(time_seconds) + uint64(time_minutes)*60 + uint64(time_hours)*60*60
-        newPlayerData[seconds] = append(newPlayerData[seconds], NewPlayerData{latitude: latitude, longitude: longitude})
-    }
+	for scanner.Scan() {
+		values := strings.Split(scanner.Text(), ",")
+		if len(values) != 3 {
+			continue
+		}
+		time := values[0]
+		latitude, _ := strconv.ParseFloat(values[1], 64)
+		longitude, _ := strconv.ParseFloat(values[2], 64)
+		time_values := strings.Split(time, ":")
+		time_hours, _ := strconv.Atoi(time_values[0])
+		time_minutes, _ := strconv.Atoi(time_values[1])
+		time_seconds, _ := strconv.Atoi(time_values[2])
+		seconds := uint64(0)
+		seconds += uint64(time_seconds) + uint64(time_minutes)*60 + uint64(time_hours)*60*60
+		newPlayerData[seconds] = append(newPlayerData[seconds], NewPlayerData{latitude: latitude, longitude: longitude})
+	}
 
-    if err := scanner.Err(); err != nil {
-        panic(err)
-    }
+	if err := scanner.Err(); err != nil {
+		panic(err)
+	}
 
 	// initialize datacenters for the simulation
 
@@ -236,13 +236,13 @@ func initialize() {
 
 	datacenters[500] = &Datacenter{name: "johannesburg", latitude: -26.195246, longitude: 28.034088}
 
-	for _,v := range datacenters {
+	for _, v := range datacenters {
 		v.playerQueue = make([]*ActivePlayer, 0, 1024)
 	}
 
 	// load latency maps for each datacenter
 
-	for _,v := range datacenters {
+	for _, v := range datacenters {
 		datacenterName := v.name
 		filename := fmt.Sprintf("data/latency_%s.bin", datacenterName)
 		data, err := os.ReadFile(filename)
@@ -257,14 +257,14 @@ func initialize() {
 		index := 0
 		floatArray := make([]float32, LatencyMapSize)
 		for i := 0; i < LatencyMapSize; i++ {
-			integerValue := binary.LittleEndian.Uint32(data[index:index+4])
+			integerValue := binary.LittleEndian.Uint32(data[index : index+4])
 			floatArray[i] = math.Float32frombits(integerValue)
 			index += 4
 		}
 		v.latencyMap = floatArray
 	}
 
-    // create active players hash (empty)
+	// create active players hash (empty)
 
 	activePlayers = make(map[uint64]*ActivePlayer)
 
@@ -292,24 +292,24 @@ const PlayerState_Bots = 5
 
 type DatacenterCostMapEntry struct {
 	index int
-	cost float64
+	cost  float64
 }
 
 type DatacenterCostEntry struct {
 	datacenterId uint64
-	cost float64
+	cost         float64
 }
 
 type ActivePlayer struct {
-	playerId uint64
-	state int
-	latitude float64
-	longitude float64
+	playerId          uint64
+	state             int
+	latitude          float64
+	longitude         float64
 	datacenterCostMap map[uint64]DatacenterCostMapEntry
-	datacenterCosts []DatacenterCostEntry
-	counter int
-	matchingTime float64
-	datacenterId uint64
+	datacenterCosts   []DatacenterCostEntry
+	counter           int
+	matchingTime      float64
+	datacenterId      uint64
 }
 
 var activePlayers map[uint64]*ActivePlayer
@@ -327,34 +327,34 @@ func runSimulation() {
 		// add new players to the simulation
 
 		for j := range newPlayerData[i] {
-			
+
 			if !chance(OneIn) {
 				continue
 			}
 
 			activePlayer := ActivePlayer{}
-			
+
 			activePlayer.playerId = playerId
 			activePlayer.latitude = newPlayerData[i][j].latitude
 			activePlayer.longitude = newPlayerData[i][j].longitude
 			activePlayer.datacenterCostMap = make(map[uint64]DatacenterCostMapEntry)
 			activePlayer.datacenterCosts = make([]DatacenterCostEntry, len(datacenters))
-			
+
 			index := 0
-			for k,v := range datacenters {
+			for k, v := range datacenters {
 				milliseconds := datacenterRTT(v, activePlayer.latitude, activePlayer.longitude)
 				activePlayer.datacenterCostMap[k] = DatacenterCostMapEntry{cost: milliseconds, index: index}
 				activePlayer.datacenterCosts[index].datacenterId = k
 				activePlayer.datacenterCosts[index].cost = milliseconds
 				index++
 			}
-			
+
 			sort.SliceStable(activePlayer.datacenterCosts[:], func(i, j int) bool {
 				return activePlayer.datacenterCosts[i].cost < activePlayer.datacenterCosts[j].cost
 			})
 
 			activePlayers[playerId] = &activePlayer
-			
+
 			playerId++
 		}
 
@@ -384,7 +384,7 @@ func runSimulation() {
 					activePlayers[i].state = PlayerState_Ideal
 
 					costLimit := activePlayers[i].datacenterCosts[0].cost + IdealCostSpread
-					
+
 					for j := range activePlayers[i].datacenterCosts {
 						datacenterId := activePlayers[i].datacenterCosts[j].datacenterId
 						datacenterCost := activePlayers[i].datacenterCosts[j].cost
@@ -572,7 +572,7 @@ func runSimulation() {
 		datacenterArray := make([]*Datacenter, len(datacenters))
 
 		index := 0
-		for _,v := range datacenters {
+		for _, v := range datacenters {
 			datacenterArray[index] = v
 			index++
 		}
@@ -594,7 +594,7 @@ func runSimulation() {
 }
 
 func shutdown() {
-	matchesFile.Close()	
+	matchesFile.Close()
 }
 
 func main() {
