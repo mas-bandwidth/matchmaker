@@ -120,14 +120,16 @@ func fillInHolesFilter(inputArray []float32, outputArray []float32, x int, y int
 	_ = latency_count
 	_ = latency_sum
 
+	/*
 	if latency_maximum > 0.0 {
 		outputArray[index] = latency_maximum
 	}
-	/*
+	*/
+
 	if latency_count > 0 {
 		outputArray[index] = latency_sum / float32(latency_count)
 	}
-	*/
+	
 	/*
 	if latency_minimum < 1000.0 {
 		outputArray[index] = latency_minimum
@@ -219,6 +221,7 @@ func main() {
 	}
 	floatArray = outputArray
 
+	/*
 	// Flip around black values to white to help the filter
 	for y := 0; y < LatencyMapHeight; y++ {
 		for x := 0; x < LatencyMapWidth; x++ {
@@ -228,6 +231,7 @@ func main() {
 			}
 		} 
 	}
+	*/
 
 	data = make([]byte, LatencyMapBytes)
 	index = 0
