@@ -18,6 +18,12 @@ DONE
 
 	Fixed a bug in expansion calculation as function of t.
 
+	Transform the latency map so that it "widens" via a filter, eg. take average of neighbours, for any lat/long square that is 0.0 and has any non-0.0 neighbours, on load.
+
 TODO
 
-	Transform the latency map so that it "widens" via a filter, eg. take average of neighbours, for any lat/long square that is 0.0 and has any non-0.0 neighbours, on load.
+	Work out a process for transforming raw input bin files into the filtered bin files.
+
+	This process needs the lat/long for each datacenter to work...
+
+	Stick datacenters into a csv file?

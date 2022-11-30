@@ -42,6 +42,7 @@ const LatencyMapWidth = 360
 const LatencyMapHeight = 180
 const LatencyMapSize = LatencyMapWidth * LatencyMapHeight
 const LatencyMapBytes = LatencyMapSize * 4
+const ConservativeFactor = 2.0
 
 func haversineDistance(lat1 float64, long1 float64, lat2 float64, long2 float64) float64 {
 	lat1 *= math.Pi / 180
@@ -60,7 +61,78 @@ func haversineDistance(lat1 float64, long1 float64, lat2 float64, long2 float64)
 }
 
 func kilometersToRTT(kilometers float64) float64 {
-	return kilometers / 299792.458 * 1000.0 * 2.0 * (3.0 / 2.0) // speed of light is 2/3rds in fiber optic cables
+	return kilometers / 300 * ConservativeFactor
+}
+
+func getSample(inputArray []float32, x int, y int) float32 {
+	if x < 0 {
+		x += LatencyMapWidth
+	}
+	if x > LatencyMapWidth - 1 {
+		x = LatencyMapWidth - 1
+	}
+	if y < 0 {
+		y = 0
+	}
+	if y >= LatencyMapHeight - 1 {
+		y = LatencyMapHeight - 1
+	}
+	index := x + y*LatencyMapWidth
+	return inputArray[index]
+}
+
+func fillInHolesFilter(inputArray []float32, outputArray []float32, x int, y int, latitude float64, longitude float64) {
+	index := x + y*LatencyMapWidth
+	if inputArray[index] >= 1.0 {
+		outputArray[index] = inputArray[index]
+		return
+	}
+	latency_sum := float32(0.0)
+	latency_count := 0
+	latency_minimum := float32(1000.0)
+	latency_maximum := float32(0.0)
+	for i := -4; i <= +4; i++ {
+		for j := -4; j <= +4; j++ {
+			sample_x := x + j
+			sample_y := y + i
+			sample_latitude := latitude - float64(i)
+			sample_longitude := longitude + float64(j)
+			sample_latency := getSample(inputArray, sample_x, sample_y)
+			if sample_latency < 1.0 {
+				continue
+			}
+			distance := haversineDistance(latitude, longitude, sample_latitude, sample_longitude)
+			rtt_to_sample := kilometersToRTT(distance)
+			sample_latency += float32(rtt_to_sample)
+			if sample_latency < latency_minimum {
+				latency_minimum = sample_latency
+			}
+			if sample_latency > latency_maximum {
+				latency_maximum = sample_latency
+			}
+			latency_sum += sample_latency
+			latency_count++
+		}
+	}
+
+	_ = latency_minimum
+	_ = latency_maximum
+	_ = latency_count
+	_ = latency_sum
+
+	if latency_maximum > 0.0 {
+		outputArray[index] = latency_maximum
+	}
+	/*
+	if latency_count > 0 {
+		outputArray[index] = latency_sum / float32(latency_count)
+	}
+	*/
+	/*
+	if latency_minimum < 1000.0 {
+		outputArray[index] = latency_minimum
+	}
+	*/
 }
 
 func main() {
@@ -120,13 +192,37 @@ func main() {
 		latitude -= 1.0
 	}
 
-	// Clamp in [0,255]. Also, flip around black values to white so we can see bad values in the image
+	// Clamp in [0,255]
 	for y := 0; y < LatencyMapHeight; y++ {
 		for x := 0; x < LatencyMapWidth; x++ {
 			index = x + y*LatencyMapWidth
 			if floatArray[index] >= 255.0 {
 				floatArray[index] = 255.0
 			}
+			if floatArray[index] < 1.0 {
+				floatArray[index] = 0.0
+			}
+		} 
+	}
+
+	// For empty squares, look in a square around the sample, and see if any neighbour points are set.
+	// Use the cheapest neighbour square latency as the empty sample latency, so we fill in holes.
+	outputArray := make([]float32, LatencyMapSize)
+	latitude = +90.0
+	for y := 0; y < LatencyMapHeight; y++ {
+		longitude := -180.0
+		for x := 0; x < LatencyMapWidth; x++ {
+			fillInHolesFilter(floatArray, outputArray, x, y, latitude, longitude)
+			longitude += 1.0
+		}
+		latitude -= 1.0
+	}
+	floatArray = outputArray
+
+	// Flip around black values to white to help the filter
+	for y := 0; y < LatencyMapHeight; y++ {
+		for x := 0; x < LatencyMapWidth; x++ {
+			index = x + y*LatencyMapWidth
 			if floatArray[index] < 1.0 {
 				floatArray[index] = 255.0
 			}
