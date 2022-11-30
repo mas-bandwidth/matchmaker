@@ -1,13 +1,7 @@
-# Network Next Makefile
-
-MODULE ?= "github.com/networknext/matchmaker"
-
-BUILD_TIME ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
-COMMIT_MESSAGE ?= $(shell git log -1 --pretty=%B | tr "\n" " " | tr \' '*')
-COMMIT_HASH ?= $(shell git rev-parse --short HEAD) 
+# Matchmaker makefile
 
 .PHONY: build
-build: dist/matchmaker dist/process
+build: dist/matchmaker dist/transform
 
 .PHONY: format
 format:

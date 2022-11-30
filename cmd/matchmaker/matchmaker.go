@@ -595,6 +595,7 @@ func runSimulation() {
 
 func shutdown() {
 	matchesFile.Close()
+	statsFile.Close()
 }
 
 func main() {
