@@ -28,7 +28,7 @@ If no ideal datacenters are available for the new player, but there are datacent
 
 * In this state players expand from the nearest datacenter up to 100ms over 60 seconds.
 
-* Players in "EXPAND" state should quickly find a game within 60 seconds and go to "PLAYING" state. 
+Players in "EXPAND" state should quickly find a game within 60 seconds and go to "PLAYING" state. 
 
 * Any players in "EXPAND" state that don't find a game within 60 seconds, go to "WARMBODY" state.
 
@@ -36,9 +36,9 @@ For players in the "WARMBODY" state, regular matchmaking attempts have failed. T
 
 * Look across all datacenters in the region for games that need extra players to start, regardless of latency, and volunteer the warm body.
 
-* Players in "WARMBODY" state that do not find a match within n seconds, go into "BOTS" state.
+Players in "WARMBODY" state that do not find a match within n seconds, go into "BOTS" state.
 
-* Players in "PLAYING" or "BOTS" state go to "DELAY" state at the end of the match.
+Players in "PLAYING" or "BOTS" state go to "DELAY" state at the end of the match.
 
-* Players in "DELAY" state go to "NEW" state after the delay between matches time has completed.
+Players in "DELAY" state go to "NEW" state after the delay between matches time has completed.
 
