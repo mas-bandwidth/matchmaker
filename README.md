@@ -38,4 +38,7 @@ For players in the "WARMBODY" state, regular matchmaking attempts have failed. T
 
 * Players in "WARMBODY" state that do not find a match within n seconds, go into "BOTS" state.
 
-Players in "PLAYING" or "BOTS" state return to "NEW" state at the end of the match.
+* Players in "PLAYING" or "BOTS" state go to "DELAY" state at the end of the match.
+
+* Players in "DELAY" state go to "NEW" state after the delay between matches time has completed.
+
