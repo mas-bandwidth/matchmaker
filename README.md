@@ -28,8 +28,6 @@ If no ideal datacenters are available for the new player, but there are datacent
 
 * In this state players expand from the nearest datacenter up to 100ms over 60 seconds.
 
-Players in "EXPAND" state should quickly find a game within 60 seconds and go to "PLAYING" state. 
-
 * Any players in "EXPAND" state that don't find a game within 60 seconds, go to "WARMBODY" state.
 
 For players in the "WARMBODY" state, regular matchmaking attempts have failed. Try to fill games with these players.
