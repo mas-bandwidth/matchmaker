@@ -43,21 +43,21 @@ import (
 	"strings"
 	"syscall"
 	"time"
-	// "text/tabwriter"
 	"encoding/binary"
 )
 
+const DelaySeconds = 90
 const ConservativeFactor = 2
 const LatencyMapWidth = 360
 const LatencyMapHeight = 180
 const LatencyMapSize = LatencyMapWidth * LatencyMapHeight
 const LatencyMapBytes = LatencyMapSize * 4
-const PlayAgainPercent = 95
-const MatchLengthSeconds = 198
+const PlayAgainPercent = 75
+const MatchLengthSeconds = 180
 const IdealTime = 60
 const ExpandTime = 60
 const WarmBodyTime = 60
-const OneIn = 10
+const OneIn = 15
 const PlayersPerMatch = 4
 const SecondsPerDay = 86400
 const MinLatitude = -90
@@ -289,6 +289,7 @@ const PlayerState_Expand = 2
 const PlayerState_WarmBody = 3
 const PlayerState_Playing = 4
 const PlayerState_Bots = 5
+const PlayerState_Delay = 6
 
 type DatacenterCostMapEntry struct {
 	index int
@@ -365,6 +366,7 @@ func runSimulation() {
 		numExpand := 0
 		numWarmBody := 0
 		numPlaying := 0
+		numDelay := 0
 
 		warmBodies := make(map[uint64]*ActivePlayer)
 
@@ -473,7 +475,7 @@ func runSimulation() {
 				if activePlayers[i].counter > MatchLengthSeconds {
 					datacenters[activePlayers[i].datacenterId].playerCount--
 					if percentChance(PlayAgainPercent) {
-						activePlayers[i].state = PlayerState_New
+						activePlayers[i].state = PlayerState_Delay
 						activePlayers[i].counter = 0
 						activePlayers[i].datacenterId = 0
 					} else {
@@ -487,12 +489,24 @@ func runSimulation() {
 
 				if activePlayers[i].counter > MatchLengthSeconds {
 					if percentChance(PlayAgainPercent) {
-						activePlayers[i].state = PlayerState_New
+						activePlayers[i].state = PlayerState_Delay
 						activePlayers[i].counter = 0
 						activePlayers[i].datacenterId = 0
 					} else {
 						delete(activePlayers, i)
 					}
+				}
+
+			} else if activePlayers[i].state == PlayerState_Delay {
+
+				numDelay++
+
+				activePlayers[i].counter++
+
+				if activePlayers[i].counter > DelaySeconds {
+					activePlayers[i].state = PlayerState_New
+					activePlayers[i].counter = 0
+					activePlayers[i].datacenterId = 0
 				}
 			}
 		}
@@ -567,7 +581,7 @@ func runSimulation() {
 
 		time := secondsToTime(seconds)
 
-		fmt.Printf("%s:\t%6d playing %5d new %5d ideal %5d expand %4d warmbody %4d bot matches\n", time.Format("2006-01-02 15:04:05"), numPlaying, numNew, numIdeal, numExpand, numWarmBody, totalBots)
+		fmt.Printf("%s: %10d playing %10d delay %5d new %5d ideal %5d expand %4d warmbody %4d bot matches\n", time.Format("2006-01-02 15:04:05"), numPlaying, numDelay, numNew, numIdeal, numExpand, numWarmBody, totalBots)
 
 		datacenterArray := make([]*Datacenter, len(datacenters))
 

@@ -22,6 +22,14 @@ DONE
 
 TODO
 
+	Make sure we are looking up the latency correctly in the image.
+
+	For example, try to get latency to sanjose from the sanjose bin -- at the lat/long of san jose, and make sure we are hitting the correct pixel.
+
+	We probably at least have to invert the latitude
+
+	-------
+
 	Work out a process for transforming raw input bin files into the filtered bin files.
 
 	This process needs the lat/long for each datacenter to work...
