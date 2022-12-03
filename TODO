@@ -2,6 +2,8 @@ DONE
 
 	Update matchmaker.go to read in the datacenter definitions from the datacenters.csv
 
+	Extend transform script to iterate across all datacenters and perform the transformation for each binfile to an output file.
+
 TODO
 
 	-------
@@ -12,6 +14,6 @@ TODO
 
 	-------
 
-	Extend transform script to iterate across all datacenters and perform the transformation for each binfile to an output file.
+	Done for now
 
 	-------
