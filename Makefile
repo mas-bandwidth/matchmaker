@@ -1,7 +1,7 @@
 # Matchmaker makefile
 
 .PHONY: build
-build: dist/matchmaker dist/transform dist/datacenters dist/combine dist/example
+build: dist/matchmaker dist/transform dist/datacenters dist/combine #dist/example
 
 .PHONY: format
 format:
@@ -17,4 +17,3 @@ rebuild: clean build ## rebuild everything
 
 dist/%: cmd/%/*.go
 	@go build -o $@ $(<D)/*.go
-

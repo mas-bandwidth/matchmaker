@@ -207,8 +207,7 @@ func main() {
 		} 
 	}
 
-	// For empty squares, look in a square around the sample, and see if any neighbour points are set.
-	// Use the cheapest neighbour square latency as the empty sample latency, so we fill in holes.
+	// Filter so we fill in holes where we don't have samples, where there are surrounding samples
 	outputArray := make([]float32, LatencyMapSize)
 	latitude = +90.0
 	for y := 0; y < LatencyMapHeight; y++ {
@@ -220,18 +219,6 @@ func main() {
 		latitude -= 1.0
 	}
 	floatArray = outputArray
-
-	/*
-	// Flip around black values to white to help the filter
-	for y := 0; y < LatencyMapHeight; y++ {
-		for x := 0; x < LatencyMapWidth; x++ {
-			index = x + y*LatencyMapWidth
-			if floatArray[index] < 1.0 {
-				floatArray[index] = 255.0
-			}
-		} 
-	}
-	*/
 
 	data = make([]byte, LatencyMapBytes)
 	index = 0
