@@ -4,16 +4,10 @@ DONE
 
 	Extend transform script to iterate across all datacenters and perform the transformation for each binfile to an output file.
 
-TODO
-
-	-------
-
 	Implement an example script that loads in datacenter binfile, eg. sanjose, and then prints out the latency from all datacenter lat/longs to sanjose.
 
 	This is a good test to make sure the lat/long lookups from the binfiles are correct...
 
-	-------
+TODO
 
 	Done for now
-
-	-------
