@@ -46,29 +46,34 @@ import (
 	"encoding/binary"
 )
 
+const PlayersPerMatch = 4
 const DelaySeconds = 90
-const ConservativeFactor = 2
-const LatencyMapWidth = 360
-const LatencyMapHeight = 180
-const LatencyMapSize = LatencyMapWidth * LatencyMapHeight
-const LatencyMapBytes = LatencyMapSize * 4
 const PlayAgainPercent = 75
 const MatchLengthSeconds = 180
 const IdealTime = 60
 const ExpandTime = 60
 const WarmBodyTime = 60
-const OneIn = 15
-const PlayersPerMatch = 4
-const SecondsPerDay = 86400
-const MinLatitude = -90
-const MaxLatitude = +90
-const MinLongitude = -180
-const MaxLongitude = +180
+const SpeedOfLightFactor = 2
+
 const IdealCostThreshold = 25
 const IdealCostSpread = 10
 const ExpandMaxCost = 100
 const ExpandCostSpread = 10
 const WarmBodyCostThreshold = 100
+
+const SampleDays = 35           // the number of days worth of samples contained in data/players.csv
+
+const LatencyMapWidth = 360
+const LatencyMapHeight = 180
+const LatencyMapSize = LatencyMapWidth * LatencyMapHeight
+const LatencyMapBytes = LatencyMapSize * 4
+
+const SecondsPerDay = 86400
+
+const MinLatitude = -90
+const MaxLatitude = +90
+const MinLongitude = -180
+const MaxLongitude = +180
 
 type NewPlayerData struct {
 	latitude  float64
@@ -133,13 +138,13 @@ func datacenterRTT(datacenter *Datacenter, playerLatitude float64, playerLongitu
 	}
 	long = math.Mod(long, LatencyMapWidth)
 	x := int(math.Floor(long)) + MaxLongitude
-	y := int(math.Floor(lat)) + MaxLatitude
+	y := MaxLatitude - int(math.Floor(lat))
 	index := x + y*LatencyMapWidth
 	if datacenter.latencyMap != nil && datacenter.latencyMap[index] > 0.0 {
 		return float64(datacenter.latencyMap[index])
 	} else {
 		kilometers := haversineDistance(playerLatitude, playerLongitude, datacenter.latitude, datacenter.longitude)
-		return kilometersToRTT(kilometers) * ConservativeFactor
+		return kilometersToRTT(kilometers) * SpeedOfLightFactor
 	}
 }
 
@@ -247,7 +252,6 @@ func initialize() {
 		filename := fmt.Sprintf("data/latency_%s.bin", datacenterName)
 		data, err := os.ReadFile(filename)
 		if err != nil {
-			panic(filename)
 			continue
 		}
 		if len(data) != LatencyMapBytes {
@@ -329,7 +333,7 @@ func runSimulation() {
 
 		for j := range newPlayerData[i] {
 
-			if !chance(OneIn) {
+			if !chance(SampleDays) {
 				continue
 			}
 
