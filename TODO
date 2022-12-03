@@ -1,14 +1,14 @@
 DONE
 
+	Update matchmaker.go to read in the datacenter definitions from the datacenters.csv
+
 TODO
 
 	-------
 
-	Update matchmaker.go to read in the datacenter definitions from the datacenters.csv
-
 	Implement an example script that loads in datacenter binfile, eg. sanjose, and then prints out the latency from all datacenter lat/longs to sanjose.
 
-	This is a good test to make sure the lat/long lookups are correct.
+	This is a good test to make sure the lat/long lookups from the binfiles are correct...
 
 	-------
 

@@ -35,6 +35,9 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"bufio"
+	"strings"
+	"strconv"
 	"encoding/binary"
 )
 
@@ -137,28 +140,18 @@ func fillInHolesFilter(inputArray []float32, outputArray []float32, x int, y int
 	*/
 }
 
-func main() {
-
-	fmt.Printf("transformers. more than meets the eye\n")
-
-	inputFilename := "input.bin"
-	outputFilename := "output.bin"
-
-	// temporary: sanjose
-	datacenterLatitude := 37.335480
-	datacenterLongitude := -121.893028
+func transform(inputFilename string, outputFilename string, datacenterLatitude float64, datacenterLongitude float64) {
 
 	data, err := os.ReadFile(inputFilename)
 	if err != nil {
-		panic(inputFilename)
+		fmt.Printf("missing binfile: %s\n", inputFilename)
+		return
 	}
 
 	if len(data) != LatencyMapBytes {
 		panic(fmt.Sprintf("latency map %s is invalid size (%d bytes)", inputFilename, len(data)))
 	}
 	
-	fmt.Printf("loaded %s\n", inputFilename)
-
 	index := 0
 	floatArray := make([]float32, LatencyMapSize)
 	for i := 0; i < LatencyMapSize; i++ {
@@ -229,6 +222,43 @@ func main() {
 	}
 
 	os.WriteFile(outputFilename, data, 0666)
+}
 
-	fmt.Printf("wrote %s\n", outputFilename)
+func main() {
+
+	f, err := os.Open("data/datacenters.csv")
+	if err != nil {
+		panic(err)
+	}
+
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+
+	cities := make([]string, 0)
+	latitudes := make([]float64, 0)
+	longitudes := make([]float64, 0)
+
+	for scanner.Scan() {
+		values := strings.Split(scanner.Text(), ",")
+		if len(values) != 4 {
+			continue
+		}
+		datacenterId, _ := strconv.Atoi(values[0])
+		city := values[1]
+		latitude, _ := strconv.ParseFloat(values[2], 64)
+		longitude, _ := strconv.ParseFloat(values[3], 64)
+		_ = datacenterId
+		cities = append(cities, city)
+		latitudes = append(latitudes, latitude)
+		longitudes = append(longitudes, longitude)
+	}
+
+	for i := range cities {
+		city := cities[i]
+		source_filename := fmt.Sprintf("./data/latency_%s.bin", city)
+		dest_filename := fmt.Sprintf("latency_%s_transformed.bin", city)
+		fmt.Printf("%s\n", dest_filename)
+		transform(source_filename, dest_filename, latitudes[i], longitudes[i])
+	}
 }
