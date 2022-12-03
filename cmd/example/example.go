@@ -48,8 +48,6 @@ const LatencyMapHeight = 180
 const LatencyMapSize = LatencyMapWidth * LatencyMapHeight
 const LatencyMapBytes = LatencyMapSize * 4
 
-const SecondsPerDay = 86400
-
 const MinLatitude = -90
 const MaxLatitude = +90
 const MinLongitude = -180
