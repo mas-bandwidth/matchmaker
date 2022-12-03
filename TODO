@@ -20,13 +20,21 @@ DONE
 
 	Transform the latency map so that it "widens" via a filter, eg. take average of neighbours, for any lat/long square that is 0.0 and has any non-0.0 neighbours, on load.
 
+	Move datacenter definitions into datacenters.csv
+
 TODO
 
-	Make sure we are looking up the latency correctly in the image.
+	Load the datacenter definitions and print out datacenter names with a new command './dist/datacenters'
 
-	For example, try to get latency to sanjose from the sanjose bin -- at the lat/long of san jose, and make sure we are hitting the correct pixel.
+	-------
 
-	We probably at least have to invert the latitude
+	Implement an example script to load each datacenter raw file and read the datacenter definitions
+
+	Then combine all datacenter maps into a combined.bin file, showing the lowest latency to any datacenter for each point on the map.
+
+	-------
+
+	Implement a processing script to transform each of the raw files into a 
 
 	-------
 
