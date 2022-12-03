@@ -59,6 +59,9 @@ func main() {
 		city := values[1]
 		latitude, _ := strconv.ParseFloat(values[2], 64)
 		longitude, _ := strconv.ParseFloat(values[3], 64)
-		fmt.Printf("%d, %s, %f, %f\n", datacenterId, city, latitude, longitude)
+		fmt.Printf("%s\n", city)
+		_ = datacenterId
+		_ = latitude
+		_ = longitude
 	}
 }
