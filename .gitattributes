@@ -1,1 +1,7 @@
 data/players.csv filter=lfs diff=lfs merge=lfs -text
+new/latency_ohio.png filter=lfs diff=lfs merge=lfs -text
+new/players.csv filter=lfs diff=lfs merge=lfs -text
+new/datacenters.csv filter=lfs diff=lfs merge=lfs -text
+new/latency_frankfurt.bin filter=lfs diff=lfs merge=lfs -text
+new/latency_frankfurt.png filter=lfs diff=lfs merge=lfs -text
+new/latency_ohio.bin filter=lfs diff=lfs merge=lfs -text
