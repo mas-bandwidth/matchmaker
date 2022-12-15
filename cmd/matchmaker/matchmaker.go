@@ -61,7 +61,7 @@ const ExpandMaxCost = 100
 const ExpandCostSpread = 10
 const WarmBodyCostThreshold = 100
 
-const SampleDays = 35           // the number of days worth of samples contained in data/players.csv
+const SampleDays = 25           // the number of days worth of samples contained in data/players.csv
 
 const LatencyMapWidth = 360
 const LatencyMapHeight = 180

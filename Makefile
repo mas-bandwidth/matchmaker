@@ -1,7 +1,7 @@
 # Matchmaker makefile
 
 .PHONY: build
-build: dist/matchmaker dist/transform dist/datacenters dist/combine dist/example
+build: dist/matchmaker dist/transform dist/datacenters dist/combine dist/example dist/average
 
 .PHONY: format
 format:
