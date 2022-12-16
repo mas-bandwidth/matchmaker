@@ -55,7 +55,7 @@ const MaxLongitude = +180
 
 func main() {
 
-	f, err := os.Open("data/datacenters.csv")
+	f, err := os.Open("new/datacenters.csv")
 	if err != nil {
 		panic(err)
 	}
@@ -78,7 +78,7 @@ func main() {
 		_ = datacenterId
 		_ = latitude
 		_ = longitude
-		filenames = append(filenames, fmt.Sprintf("data/latency_%s.bin", city))
+		filenames = append(filenames, fmt.Sprintf("new/latency_%s.bin", city))
 	}
 
 	latencyMaps := make([][]float32, 0)
