@@ -38,7 +38,10 @@ import (
 	"strings"
 	"strconv"
 	"encoding/binary"
-	"math"
+	"image"
+	"image/png"
+    "image/color"
+    "math"
 )
 
 const LatencyMapWidth = 360
@@ -55,7 +58,7 @@ const MaxLongitude = +180
 
 func main() {
 
-	f, err := os.Open("new/datacenters.csv")
+	f, err := os.Open("data/datacenters.csv")
 	if err != nil {
 		panic(err)
 	}
@@ -78,7 +81,7 @@ func main() {
 		_ = datacenterId
 		_ = latitude
 		_ = longitude
-		filenames = append(filenames, fmt.Sprintf("new/latency_%s.bin", city))
+		filenames = append(filenames, fmt.Sprintf("data/latency_%s.bin", city))
 	}
 
 	latencyMaps := make([][]float32, 0)
@@ -114,7 +117,7 @@ func main() {
 				value = latencyMaps[j][i]
 			}
 		}
-		if value < 1000.0 {
+		if value <= 200.0 {
 			combined[i] = value
 		}
 	}
@@ -128,4 +131,111 @@ func main() {
 	}
 
 	os.WriteFile("combined.bin", data, 0666)
+
+	// write out as color png
+
+	imageData := image.NewRGBA(image.Rectangle{image.Point{0,0},image.Point{LatencyMapWidth,LatencyMapHeight}})
+
+	for x := 0; x < LatencyMapWidth; x++ {
+		for y := 0; y < LatencyMapHeight; y++ {
+			index := y*LatencyMapWidth + x
+			intensity := combined[index]
+			if intensity <= 50 {
+		    	c := color.RGBA{uint8(0),uint8(intensity*4),uint8(0),255}
+		    	imageData.Set(x,y,c)
+			} else if intensity <= 100 {
+		    	c := color.RGBA{uint8(intensity*4),uint8(intensity*4*0.647),uint8(0),255}
+		    	imageData.Set(x,y,c)
+			} else {
+		    	c := color.RGBA{uint8(intensity*2),uint8(0),uint8(0),255}
+		    	imageData.Set(x,y,c)
+			}
+		}
+	}
+	 
+	imageFile, _ := os.Create("color.png")
+
+    png.Encode(imageFile, imageData)
+
+	// write out as javascript array for visualization
+
+	const JSArrayBlockSize = 3
+	const JSArrayWidth = LatencyMapWidth / JSArrayBlockSize
+	const JSArrayHeight = LatencyMapHeight / JSArrayBlockSize
+	const JSArraySize = JSArrayWidth * JSArrayHeight
+
+	jsArray := make([]float32, JSArraySize)
+
+	for y := 0; y < JSArrayHeight; y++ {
+		for x := 0; x < JSArrayWidth; x++ {
+			bx := x * JSArrayBlockSize
+			by := y * JSArrayBlockSize
+			sum := float32(0.0)
+			count := float32(0.0)
+			for j := 0; j < JSArrayBlockSize; j++ {
+				for i := 0; i < JSArrayBlockSize; i++ {
+					index := (by+j) * LatencyMapWidth + (bx+i)
+					if combined[index] >= 1.0 {
+						sum += combined[index]
+						count++
+					}
+				}
+			}
+			if count > 0 {
+				index := x+y*JSArrayWidth
+				jsArray[index] = float32(sum / count) / 255.0
+			}
+		}
+	}
+
+	for i := 0; i < len(jsArray); i++ {
+		fmt.Printf("%.5f,", jsArray[i])
+	}
+	fmt.Printf("\n")
+
+	/*
+	const JSArrayBlockSize = 3
+	const JSArrayWidth = LatencyMapWidth / JSArrayBlockSize
+	const JSArrayHeight = LatencyMapHeight / JSArrayBlockSize
+	const JSArraySize = JSArrayWidth * JSArrayHeight
+
+	jsArray := make([]byte, JSArraySize)
+
+	for y := 0; y < JSArrayHeight; y++ {
+		for x := 0; x < JSArrayWidth; x++ {
+			bx := x * JSArrayBlockSize
+			by := y * JSArrayBlockSize
+			numGreen := 0
+			numOrange := 0
+			numRed := 0
+			for j := 0; j < JSArrayBlockSize; j++ {
+				for i := 0; i < JSArrayBlockSize; i++ {
+					index := (by+j) * LatencyMapWidth + (bx+i)
+					if combined[index] >= 1.0 {
+						if combined[index] <= 50.0 {
+							numGreen++
+						} else if combined[index] <= 100.0 {
+							numOrange++
+						} else {
+							numRed++
+						}
+					}
+				}
+			}
+			index := x+y*JSArrayWidth
+			if numRed > 0 {
+				jsArray[index] = 3
+			} else if numOrange > 0 {
+				jsArray[index] = 2
+			} else if numGreen > 0 {
+				jsArray[index] = 1
+			}
+		}
+	}
+
+	for i := 0; i < len(jsArray); i++ {
+		fmt.Printf("%d,", jsArray[i])
+	}
+	fmt.Printf("\n")
+	*/
 }
