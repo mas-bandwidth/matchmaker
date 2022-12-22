@@ -43,25 +43,28 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"net/http"
 	"encoding/binary"
+
+	"github.com/gorilla/mux"
 )
 
 const PlayersPerMatch = 4
-const DelaySeconds = 90
-const PlayAgainPercent = 75
+const DelaySeconds = 50
+const PlayAgainPercent = 90
 const MatchLengthSeconds = 180
 const IdealTime = 60
 const ExpandTime = 60
 const WarmBodyTime = 60
 const SpeedOfLightFactor = 2
 
-const IdealCostThreshold = 25
+const IdealCostThreshold = 300
 const IdealCostSpread = 10
-const ExpandMaxCost = 100
+const ExpandMaxCost = 200
 const ExpandCostSpread = 10
-const WarmBodyCostThreshold = 100
+const WarmBodyCostThreshold = 255
 
-const SampleDays = 25           // the number of days worth of samples contained in data/players.csv
+const SampleDays = 30           // the number of days worth of samples contained in new/players.csv
 
 const LatencyMapWidth = 360
 const LatencyMapHeight = 180
@@ -170,7 +173,7 @@ func initialize() {
 
 	// load the players.csv file and parse it
 
-	f, err := os.Open("data/players.csv")
+	f, err := os.Open("new/players.csv")
 	if err != nil {
 		panic(err)
 	}
@@ -206,7 +209,7 @@ func initialize() {
 
 	datacenters = make(map[uint64]*Datacenter)
 
-	f, err = os.Open("data/datacenters.csv")
+	f, err = os.Open("new/datacenters.csv")
 	if err != nil {
 		panic(err)
 	}
@@ -235,7 +238,7 @@ func initialize() {
 
 	for _, v := range datacenters {
 		datacenterName := v.name
-		filename := fmt.Sprintf("data/latency_%s.bin", datacenterName)
+		filename := fmt.Sprintf("new/latency_%s.bin", datacenterName)
 		data, err := os.ReadFile(filename)
 		if err != nil {
 			continue
@@ -567,11 +570,11 @@ func runSimulation() {
 			}
 		}
 
-		// print status for this iteration
+		// write stats
 
-		time := secondsToTime(seconds)
+		// time := secondsToTime(seconds)
 
-		fmt.Printf("%s: %10d playing %10d delay %5d new %5d ideal %5d expand %4d warmbody %4d bot matches\n", time.Format("2006-01-02 15:04:05"), numPlaying, numDelay, numNew, numIdeal, numExpand, numWarmBody, totalBots)
+		// fmt.Printf("%s: %10d playing %10d delay %5d new %5d ideal %5d expand %4d warmbody %4d bot matches\n", time.Format("2006-01-02 15:04:05"), numPlaying, numDelay, numNew, numIdeal, numExpand, numWarmBody, totalBots)
 
 		datacenterArray := make([]*Datacenter, len(datacenters))
 
@@ -593,6 +596,10 @@ func runSimulation() {
 			fmt.Fprintf(statsFile, "%d,%s,%d,%.1f,%.1f\n", seconds, datacenterArray[i].name, datacenterArray[i].playerCount, datacenterArray[i].averageLatency, datacenterArray[i].averageMatchingTime)
 		}
 
+		// update map data
+
+		// todo
+
 		seconds++
 	}
 }
@@ -603,6 +610,20 @@ func shutdown() {
 }
 
 func main() {
+
+	go func() {
+		var router mux.Router
+		router.HandleFunc("/data", dataHandler).Methods("GET")
+		router.HandleFunc("/", serveFile("index.html")).Methods("GET")
+		router.HandleFunc("/map.js", serveFile("map.js")).Methods("GET")
+		router.HandleFunc("/styles.css", serveFile("styles.css")).Methods("GET")
+		fmt.Printf("starting web server\n")
+		err := http.ListenAndServe("127.0.0.1:8000", &router)
+		if err != nil {
+			fmt.Printf("error starting http server: %v\n", err)
+			os.Exit(1)
+		}
+	}()
 
 	initialize()
 
@@ -617,4 +638,21 @@ func main() {
 	shutdown()
 
 	fmt.Printf("shutdown completed\n")
+}
+
+func serveFile(filename string) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) { fmt.Printf("serve %s\n", filename); http.ServeFile(w, r, fmt.Sprintf("map/%s", filename)) }
+}
+
+func dataHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("serve data\n")
+	w.Header().Set("Content-Type", "application/octet-stream")
+	width := 120
+	height := 64
+	size := width * height
+	data := make([]byte, size)
+	data[1000] = 255
+	data[1001] = 255
+	// todo: grab mutex, then get data pointer, unlock mutex, then write data
+	w.Write(data)
 }
