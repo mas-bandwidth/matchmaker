@@ -39,6 +39,7 @@ import (
 	"os"
 	"os/signal"
 	"sort"
+	"sync"
 	"strconv"
 	"strings"
 	"syscall"
@@ -64,7 +65,7 @@ const ExpandMaxCost = 200
 const ExpandCostSpread = 10
 const WarmBodyCostThreshold = 255
 
-const SampleDays = 30           // the number of days worth of samples contained in new/players.csv
+const SampleDays = 1           // the number of days worth of samples contained in new/players.csv
 
 const LatencyMapWidth = 360
 const LatencyMapHeight = 180
@@ -77,6 +78,9 @@ const MinLatitude = -90
 const MaxLatitude = +90
 const MinLongitude = -180
 const MaxLongitude = +180
+
+var mapDataMutex sync.RWMutex
+var mapData      []byte
 
 type NewPlayerData struct {
 	latitude  float64
@@ -142,6 +146,12 @@ func datacenterRTT(datacenter *Datacenter, playerLatitude float64, playerLongitu
 	long = math.Mod(long, LatencyMapWidth)
 	x := int(math.Floor(long)) + MaxLongitude
 	y := MaxLatitude - int(math.Floor(lat))
+	if x >= LatencyMapWidth {
+		x = LatencyMapWidth - 1
+	}
+	if y >= LatencyMapHeight {
+		y = LatencyMapHeight - 1
+	}
 	index := x + y*LatencyMapWidth
 	if datacenter.latencyMap != nil && datacenter.latencyMap[index] > 0.0 {
 		return float64(datacenter.latencyMap[index])
@@ -304,6 +314,7 @@ type ActivePlayer struct {
 	counter           int
 	matchingTime      float64
 	datacenterId      uint64
+	latency           float64
 }
 
 var activePlayers map[uint64]*ActivePlayer
@@ -534,6 +545,7 @@ func runSimulation() {
 						datacenter.averageMatchingTime += (matchPlayers[j].matchingTime - datacenter.averageMatchingTime) * 0.01
 						matchPlayers[j].state = PlayerState_Playing
 						matchPlayers[j].datacenterId = datacenterId
+						matchPlayers[j].latency = latency
 						matchPlayers[j].counter = 0
 						fmt.Fprintf(matchesFile, "%d,%.1f,%.1f,%s,%.1f,%.1f\n", seconds, matchPlayers[j].latitude, matchPlayers[j].longitude, datacenter.name, latency, matchPlayers[j].matchingTime)
 					}
@@ -598,7 +610,49 @@ func runSimulation() {
 
 		// update map data
 
-		// todo
+		const MapWidth = 120
+		const MapHeight = 64
+		const MapSize = MapWidth * MapHeight
+
+		sumData := make([]float64, MapSize)
+		countData := make([]float64, MapSize)
+
+		for i := range activePlayers {
+			if activePlayers[i].state != PlayerState_Playing {
+				continue
+			}
+			ix := int( ( activePlayers[i].longitude + MaxLongitude ) / 3.0 )
+			if ix < 0 {
+				ix = 0
+			} else if ix >= MapWidth {
+				ix = MapWidth - 1
+			}
+			iy := int( ( MaxLatitude - activePlayers[i].latitude ) / 3.0 )
+			if iy < 0 {
+				iy = 0
+			} else if iy >= MapHeight {
+				iy = MapHeight - 1
+			}
+			index := ix + iy*MapWidth
+			sumData[index] += activePlayers[i].latency
+			countData[index]++
+		}
+
+		data := make([]uint32, MapSize)
+		for i := 0; i < MapSize; i++ {
+			data[i] = uint32(countData[i])
+		}
+
+		byte_data := make([]uint8, MapSize*4)
+		for i := 0; i < MapSize; i++ {
+			binary.LittleEndian.PutUint32(byte_data[i*4:], data[i])
+		}
+
+		mapDataMutex.Lock()
+		mapData = byte_data
+		mapDataMutex.Unlock()
+
+		// time.Sleep(1*time.Millisecond)
 
 		seconds++
 	}
@@ -645,14 +699,9 @@ func serveFile(filename string) func(w http.ResponseWriter, r *http.Request) {
 }
 
 func dataHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("serve data\n")
 	w.Header().Set("Content-Type", "application/octet-stream")
-	width := 120
-	height := 64
-	size := width * height
-	data := make([]byte, size)
-	data[1000] = 255
-	data[1001] = 255
-	// todo: grab mutex, then get data pointer, unlock mutex, then write data
+	mapDataMutex.RLock()
+	data := mapData
+	mapDataMutex.RUnlock()
 	w.Write(data)
 }

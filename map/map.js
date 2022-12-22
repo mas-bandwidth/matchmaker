@@ -5,21 +5,26 @@ const standard_height = 940
 const width = 120
 const height = 64
 const size = width * height
-const exclusion = 70
-const exclusion2 = exclusion * exclusion
-const pos_tightness = 0.20
+
 const origin_x = 50
 const origin_y = 50
 
 const spacing_x = 16
 const spacing_y = 16
 
-const color_radius = 5
+const color_radius = 3.0
+const max_radius = 8
 const grey_radius = 3.5
 
 const wobble_tightness = 0.5
-const wobble_min = 0.32
-const wobble_max = 0.85
+const wobble_min = 0.0 //0.32
+const wobble_max = 0.0 // 0.85
+
+const exclusion = 50
+const exclusion2 = exclusion * exclusion
+const pos_tightness = 0.20
+
+const background = "rgb(15,15,15)"
 
 ;(function () {
   let canvas, ctx, raw_mouse_x, raw_mouse_y, state_x, state_y, data, wobble_intensity
@@ -62,14 +67,22 @@ const wobble_max = 0.85
 
     update_data()
 
-	setInterval(update_data, 1000)
+	setInterval(update_data, 10)
   }
 
   function update_data() {
-  	console.log("update data");
     new_data = load_binary_resource("http://127.0.0.1:8000/data")
-    if (new_data.length == size) {
-      data = new_data
+	if (new_data.length == size*4) {
+	  console.log("update data (" + new_data.length + ")")
+	  let buffer = new ArrayBuffer(new_data.length)
+	  let view8 = new Uint8Array(buffer)
+      for (var i = 0; i < new_data.length; i++) {
+      	view8[i] = new_data[i]
+      }
+	  let view32 = new Uint32Array(buffer)
+      for (var i = 0; i < size; i++) {
+      	data[i] = view32[i]
+      }
     }
   }
 
@@ -95,7 +108,7 @@ const wobble_max = 0.85
     window.requestAnimationFrame(update)
 
     ctx.rect(0, 0, canvas.width, canvas.height)
-    ctx.fillStyle = "rgb(20,20,20)"
+    ctx.fillStyle = background
     ctx.fill()
 
     canvas_width = canvas.getBoundingClientRect().width
@@ -107,10 +120,6 @@ const wobble_max = 0.85
 
     wobble_intensity *= wobble_tightness
 
-    color_x = new Array(0)
-    color_y = new Array(0)
-    color_c = new Array(0)
-
     for (var j = 0; j < height-10; j++) {
       for (var i = 0; i < width; i++) {
 
@@ -119,13 +128,20 @@ const wobble_max = 0.85
         radius = grey_radius + 0.15 * Math.sin(-t*10+(i+j)*0.25)
 
         color = 'rgb(35,35,35)'
-        if (data[index] > 0.0) {
-          intensity = data[index] * 5
+
+        draw = false
+
+        if (data[index] > 0) {
+          draw = true
+          intensity = 0.1 + data[index] / 1000
+          r = 50 * intensity
           g = 200 * intensity
           b = 255 * intensity
-          color = 'rgb(0,200,255)'
-          color = 'rgb(0,' + g + ',' + b + ')'
-          radius = color_radius
+          color = 'rgb(' + r + ',' + g + ',' + b + ')'
+          radius = color_radius + intensity
+          if (radius > max_radius) {
+          	radius = max_radius
+          }
         }
       
         // base circle position
@@ -133,6 +149,7 @@ const wobble_max = 0.85
         x = origin_x + i*spacing_x
         y = origin_y + j*spacing_y
 
+        /*
         // wobble effect
 
         wobble_magnitude = wobble_min + wobble_intensity
@@ -182,34 +199,22 @@ const wobble_max = 0.85
           state_x[index] = x
           state_y[index] = y
         }
+        */
 
-        // draw grey dots now, queue up color circles for later...
+        x *= normalize_factor
+        y *= normalize_factor
+        radius *= normalize_factor
 
-        if (radius == color_radius) {
-          color_x.push(state_x[index])
-          color_y.push(state_y[index])
-          color_c.push(color)
-        } else {
-          ctx.fillStyle = color
-          ctx.beginPath()
-          ctx.arc(state_x[index] * normalize_factor, state_y[index] * normalize_factor, radius * normalize_factor, 0, 2 * Math.PI, true)
-          ctx.fill()
-          ctx.closePath()
+        // draw circle
+
+        if (draw) {
+	        ctx.fillStyle = color
+	        ctx.beginPath()
+	        ctx.arc(x, y, radius, 0, 2 * Math.PI, true)
+	        ctx.fill()
+	        ctx.closePath()
         }
       }
-    }
-
-    // color circles draw on top of grey dots
-
-    while (color_x.length > 0) {
-      x = color_x.pop()
-      y = color_y.pop()
-      c = color_c.pop()
-      ctx.fillStyle = c
-      ctx.beginPath()
-      ctx.arc(x * normalize_factor, y * normalize_factor, color_radius * normalize_factor, 0, 2 * Math.PI, true)
-      ctx.fill()
-      ctx.closePath()
     }
 
     t += dt
