@@ -65,7 +65,7 @@ const ExpandMaxCost = 200
 const ExpandCostSpread = 10
 const WarmBodyCostThreshold = 255
 
-const SampleDays = 1           // the number of days worth of samples contained in new/players.csv
+const SampleDays = 30           // the number of days worth of samples contained in players.csv
 
 const LatencyMapWidth = 360
 const LatencyMapHeight = 180
@@ -547,7 +547,7 @@ func runSimulation() {
 						matchPlayers[j].datacenterId = datacenterId
 						matchPlayers[j].latency = latency
 						matchPlayers[j].counter = 0
-						fmt.Fprintf(matchesFile, "%d,%.1f,%.1f,%s,%.1f,%.1f\n", seconds, matchPlayers[j].latitude, matchPlayers[j].longitude, datacenter.name, latency, matchPlayers[j].matchingTime)
+						// fmt.Fprintf(matchesFile, "%d,%.1f,%.1f,%s,%.1f,%.1f\n", seconds, matchPlayers[j].latitude, matchPlayers[j].longitude, datacenter.name, latency, matchPlayers[j].matchingTime)
 					}
 					playerCount = 0
 				}
@@ -588,6 +588,9 @@ func runSimulation() {
 
 		// fmt.Printf("%s: %10d playing %10d delay %5d new %5d ideal %5d expand %4d warmbody %4d bot matches\n", time.Format("2006-01-02 15:04:05"), numPlaying, numDelay, numNew, numIdeal, numExpand, numWarmBody, totalBots)
 
+		fmt.Printf("%s\n", secondsToTime(seconds))
+
+		/*
 		datacenterArray := make([]*Datacenter, len(datacenters))
 
 		index := 0
@@ -607,14 +610,21 @@ func runSimulation() {
 		for i := range datacenterArray {
 			fmt.Fprintf(statsFile, "%d,%s,%d,%.1f,%.1f\n", seconds, datacenterArray[i].name, datacenterArray[i].playerCount, datacenterArray[i].averageLatency, datacenterArray[i].averageMatchingTime)
 		}
+		*/
+
+		seconds++
 
 		// update map data
+
+		if ( seconds % 10) != 0 {
+			continue
+		}
 
 		const MapWidth = 120
 		const MapHeight = 64
 		const MapSize = MapWidth * MapHeight
 
-		sumData := make([]float64, MapSize)
+		// sumData := make([]float64, MapSize)
 		countData := make([]float64, MapSize)
 
 		for i := range activePlayers {
@@ -634,27 +644,19 @@ func runSimulation() {
 				iy = MapHeight - 1
 			}
 			index := ix + iy*MapWidth
-			sumData[index] += activePlayers[i].latency
+			// sumData[index] += activePlayers[i].latency
 			countData[index]++
 		}
 
-		data := make([]uint32, MapSize)
+		data := make([]uint8, MapSize*4)
 		for i := 0; i < MapSize; i++ {
-			data[i] = uint32(countData[i])
-		}
-
-		byte_data := make([]uint8, MapSize*4)
-		for i := 0; i < MapSize; i++ {
-			binary.LittleEndian.PutUint32(byte_data[i*4:], data[i])
+			intData := uint32(countData[i])
+			binary.LittleEndian.PutUint32(data[i*4:], intData)
 		}
 
 		mapDataMutex.Lock()
-		mapData = byte_data
+		mapData = data
 		mapDataMutex.Unlock()
-
-		// time.Sleep(1*time.Millisecond)
-
-		seconds++
 	}
 }
 

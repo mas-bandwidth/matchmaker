@@ -12,15 +12,15 @@ const origin_y = 50
 const spacing_x = 16
 const spacing_y = 16
 
-const color_radius = 3.0
+const color_radius = 5
 const max_radius = 8
-const grey_radius = 3.5
+const grey_radius = 2.0
 
 const wobble_tightness = 0.5
-const wobble_min = 0.0 //0.32
-const wobble_max = 0.0 // 0.85
+const wobble_min = 0.32
+const wobble_max = 0.85
 
-const exclusion = 50
+const exclusion = 75
 const exclusion2 = exclusion * exclusion
 const pos_tightness = 0.20
 
@@ -133,12 +133,17 @@ const background = "rgb(15,15,15)"
 
         if (data[index] > 0) {
           draw = true
-          intensity = 0.1 + data[index] / 1000
-          r = 50 * intensity
-          g = 200 * intensity
-          b = 255 * intensity
+          intensity = data[index] / 8
+          r = 50 * (0.25 + 0.25 * intensity)
+          g = 200 * (0.25 + 0.25 * intensity)
+          b = 255 * (0.25 + 0.25 * intensity)
           color = 'rgb(' + r + ',' + g + ',' + b + ')'
-          radius = color_radius + intensity
+          intensity2 = intensity
+          intensity2 -= 10
+          if (intensity2 < 0) {
+          	intensity2 = 0
+          }
+          radius = color_radius + 0.5*intensity2
           if (radius > max_radius) {
           	radius = max_radius
           }
@@ -149,7 +154,6 @@ const background = "rgb(15,15,15)"
         x = origin_x + i*spacing_x
         y = origin_y + j*spacing_y
 
-        /*
         // wobble effect
 
         wobble_magnitude = wobble_min + wobble_intensity
@@ -199,7 +203,9 @@ const background = "rgb(15,15,15)"
           state_x[index] = x
           state_y[index] = y
         }
-        */
+
+        x = state_x[index]
+        y = state_y[index]
 
         x *= normalize_factor
         y *= normalize_factor
