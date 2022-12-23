@@ -325,6 +325,12 @@ func runSimulation() {
 	var playerId uint64
 	var totalBots uint64
 
+	const MapWidth = 120
+	const MapHeight = 64
+	const MapSize = MapWidth * MapHeight
+
+	countData := make([]float64, MapSize)
+
 	for {
 
 		i := seconds % SecondsPerDay
@@ -616,17 +622,6 @@ func runSimulation() {
 
 		// update map data
 
-		if ( seconds % 10) != 0 {
-			continue
-		}
-
-		const MapWidth = 120
-		const MapHeight = 64
-		const MapSize = MapWidth * MapHeight
-
-		// sumData := make([]float64, MapSize)
-		countData := make([]float64, MapSize)
-
 		for i := range activePlayers {
 			if activePlayers[i].state != PlayerState_Playing {
 				continue
@@ -644,19 +639,23 @@ func runSimulation() {
 				iy = MapHeight - 1
 			}
 			index := ix + iy*MapWidth
-			// sumData[index] += activePlayers[i].latency
 			countData[index]++
 		}
 
-		data := make([]uint8, MapSize*4)
-		for i := 0; i < MapSize; i++ {
-			intData := uint32(countData[i])
-			binary.LittleEndian.PutUint32(data[i*4:], intData)
-		}
+		if ( seconds % 10) == 0 {
 
-		mapDataMutex.Lock()
-		mapData = data
-		mapDataMutex.Unlock()
+			data := make([]uint8, MapSize*4)
+			for i := 0; i < MapSize; i++ {
+				intData := uint32(countData[i])
+				binary.LittleEndian.PutUint32(data[i*4:], intData)
+			}
+
+			mapDataMutex.Lock()
+			mapData = data
+			mapDataMutex.Unlock()
+
+			countData = make([]float64, MapSize)
+		}
 	}
 }
 

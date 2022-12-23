@@ -12,9 +12,8 @@ const origin_y = 50
 const spacing_x = 16
 const spacing_y = 16
 
-const color_radius = 5
-const max_radius = 8
-const grey_radius = 2.0
+const color_radius = 5 * 0.5
+const max_radius = 8 * 1.0
 
 const wobble_tightness = 0.5
 const wobble_min = 0.32
@@ -125,25 +124,23 @@ const background = "rgb(15,15,15)"
 
         index = i + j*width
 
-        radius = grey_radius + 0.15 * Math.sin(-t*10+(i+j)*0.25)
-
-        color = 'rgb(35,35,35)'
+        radius = 1.0
 
         draw = false
 
         if (data[index] > 0) {
           draw = true
-          intensity = data[index] / 8
+          intensity = data[index] / 70
           r = 50 * (0.25 + 0.25 * intensity)
           g = 200 * (0.25 + 0.25 * intensity)
           b = 255 * (0.25 + 0.25 * intensity)
           color = 'rgb(' + r + ',' + g + ',' + b + ')'
           intensity2 = intensity
-          intensity2 -= 10
+          intensity2 -= 15
           if (intensity2 < 0) {
           	intensity2 = 0
           }
-          radius = color_radius + 0.5*intensity2
+          radius = color_radius + intensity2 * 2
           if (radius > max_radius) {
           	radius = max_radius
           }
@@ -166,52 +163,11 @@ const background = "rgb(15,15,15)"
         x += wobble_x
         y += wobble_y
 
-        // exclusion effect
-
-        dx = x - mouse_x
-        dy = y - mouse_y
-
-        d2 = dx*dx + dy*dy
-        if (d2<exclusion2){
-          d = Math.sqrt(d2)
-          nx = 1
-          ny = 0
-          if (d > 0) {
-            nx = dx / d
-            ny = dy / d
-          }
-          x = mouse_x + nx * exclusion
-          y = mouse_y + ny * exclusion
-        }
-
-        // move to target
-
-        if (state_x[index] != 0) {
-          dx = x - state_x[index]
-          if (dx > 0.00001) {
-            state_x[index] += (x - state_x[index]) * pos_tightness
-          } else {
-            state_x[index] = x
-          }
-          dy = y - state_y[index]
-          if (dy > 0.00001) {
-            state_y[index] += (y - state_y[index]) * pos_tightness
-          } else {
-            state_y[index] = y
-          }
-        } else {
-          state_x[index] = x
-          state_y[index] = y
-        }
-
-        x = state_x[index]
-        y = state_y[index]
+        // draw circle
 
         x *= normalize_factor
         y *= normalize_factor
         radius *= normalize_factor
-
-        // draw circle
 
         if (draw) {
 	        ctx.fillStyle = color
