@@ -52,7 +52,7 @@ import (
 
 const PlayersPerMatch = 4
 const DelaySeconds = 50
-const PlayAgainPercent = 90
+const PlayAgainPercent = 96
 const MatchLengthSeconds = 180
 const IdealTime = 60
 const ExpandTime = 60
@@ -65,7 +65,7 @@ const ExpandMaxCost = 200
 const ExpandCostSpread = 10
 const WarmBodyCostThreshold = 255
 
-const SampleDays = 30           // the number of days worth of samples contained in players.csv
+const SampleDays = 20           // the number of days worth of samples contained in players.csv
 
 const LatencyMapWidth = 360
 const LatencyMapHeight = 180
