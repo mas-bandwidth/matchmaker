@@ -1,5 +1,5 @@
 /*
-	Copyright (c) 2022, Network Next, Inc. All rights reserved.
+	Copyright (c) 2023 - 2024, Mas Bandwidth LLC. All rights reserved.
 
 	This is open source software licensed under the BSD 3-Clause License.
 
