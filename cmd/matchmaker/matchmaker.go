@@ -36,6 +36,7 @@ import (
 	"encoding/binary"
 
 	"github.com/gorilla/mux"
+	"github.com/rs/cors"
 )
 
 const PlayersPerMatch = 4
@@ -171,7 +172,7 @@ func initialize() {
 
 	// load the players.csv file and parse it
 
-	f, err := os.Open("new/players.csv")
+	f, err := os.Open("data/players.csv")
 	if err != nil {
 		panic(err)
 	}
@@ -207,7 +208,7 @@ func initialize() {
 
 	datacenters = make(map[uint64]*Datacenter)
 
-	f, err = os.Open("new/datacenters.csv")
+	f, err = os.Open("data/datacenters.csv")
 	if err != nil {
 		panic(err)
 	}
@@ -236,7 +237,7 @@ func initialize() {
 
 	for _, v := range datacenters {
 		datacenterName := v.name
-		filename := fmt.Sprintf("new/latency_%s.bin", datacenterName)
+		filename := fmt.Sprintf("data/latency_%s.bin", datacenterName)
 		data, err := os.ReadFile(filename)
 		if err != nil {
 			continue
@@ -578,9 +579,9 @@ func runSimulation() {
 
 		// write stats
 
-		// time := secondsToTime(seconds)
+		time := secondsToTime(seconds)
 
-		// fmt.Printf("%s: %10d playing %10d delay %5d new %5d ideal %5d expand %4d warmbody %4d bot matches\n", time.Format("2006-01-02 15:04:05"), numPlaying, numDelay, numNew, numIdeal, numExpand, numWarmBody, totalBots)
+		fmt.Printf("%s: %10d playing %10d delay %5d new %5d ideal %5d expand %4d warmbody %4d bot matches\n", time.Format("2006-01-02 15:04:05"), numPlaying, numDelay, numNew, numIdeal, numExpand, numWarmBody, totalBots)
 
 		fmt.Printf("%s\n", secondsToTime(seconds))
 
@@ -630,7 +631,7 @@ func runSimulation() {
 			countData[index]++
 		}
 
-		if ( seconds % 10) == 0 {
+		if ( seconds % 10 ) == 0 {
 
 			data := make([]uint8, MapSize*4)
 			for i := 0; i < MapSize; i++ {
@@ -661,7 +662,12 @@ func main() {
 		router.HandleFunc("/map.js", serveFile("map.js")).Methods("GET")
 		router.HandleFunc("/styles.css", serveFile("styles.css")).Methods("GET")
 		fmt.Printf("starting web server\n")
-		err := http.ListenAndServe("127.0.0.1:8000", &router)
+		c := cors.New(cors.Options{
+			AllowedOrigins:   []string{"*"},
+			AllowedHeaders:   []string{"*"},
+			AllowCredentials: true,
+		})
+		err := http.ListenAndServe("127.0.0.1:8000", c.Handler(&router))
 		if err != nil {
 			fmt.Printf("error starting http server: %v\n", err)
 			os.Exit(1)
