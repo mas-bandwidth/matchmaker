@@ -579,11 +579,11 @@ func runSimulation() {
 
 		// write stats
 
-		time := secondsToTime(seconds)
+		// time := secondsToTime(seconds)
 
-		fmt.Printf("%s: %10d playing %10d delay %5d new %5d ideal %5d expand %4d warmbody %4d bot matches\n", time.Format("2006-01-02 15:04:05"), numPlaying, numDelay, numNew, numIdeal, numExpand, numWarmBody, totalBots)
+		// fmt.Printf("%s: %10d playing %10d delay %5d new %5d ideal %5d expand %4d warmbody %4d bot matches\n", time.Format("2006-01-02 15:04:05"), numPlaying, numDelay, numNew, numIdeal, numExpand, numWarmBody, totalBots)
 
-		fmt.Printf("%s\n", secondsToTime(seconds))
+		// fmt.Printf("%s\n", secondsToTime(seconds))
 
 		/*
 		datacenterArray := make([]*Datacenter, len(datacenters))
