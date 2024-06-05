@@ -34,6 +34,7 @@ import (
 	"time"
 	"net/http"
 	"encoding/binary"
+	"container/heap"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
@@ -180,8 +181,6 @@ func initialize() {
 
 	scanner := bufio.NewScanner(f)
 
-	endMatchChan = make(chan *MatchData, 100000)
-
 	newPlayerData = make([][]NewPlayerData, SecondsPerDay)
 
 	for scanner.Scan() {
@@ -274,6 +273,10 @@ func initialize() {
 	if err != nil {
 		panic(err)
 	}
+
+	// initialize the match priority queue
+
+	heap.Init(&matchQueue)
 }
 
 const PlayerState_New = 0
@@ -308,11 +311,50 @@ type ActivePlayer struct {
 
 var activePlayers map[uint64]*ActivePlayer
 
+// -----------------------------------------------------------------------------------------------------
+
 type MatchData struct {
+	priority uint64
 	players []*ActivePlayer
+	index int
 }
 
-var endMatchChan chan *MatchData
+type MatchPriorityQueue []*MatchData
+
+func (pq MatchPriorityQueue) Len() int { return len(pq) }
+
+func (pq MatchPriorityQueue) Less(i, j int) bool {
+	return pq[i].priority < pq[j].priority
+}
+
+func (pq MatchPriorityQueue) Swap(i, j int) {
+	pq[i], pq[j] = pq[j], pq[i]
+	pq[i].index = i
+	pq[j].index = j
+}
+
+func (pq *MatchPriorityQueue) Push(x any) {
+	n := len(*pq)
+	item := x.(*MatchData)
+	item.index = n
+	*pq = append(*pq, item)
+}
+
+func (pq *MatchPriorityQueue) Pop() any {
+	old := *pq
+	n := len(old)
+	item := old[n-1]
+	old[n-1] = nil  // avoid memory leak
+	item.index = -1 // for safety
+	*pq = old[0 : n-1]
+	return item
+}
+
+var matchQueue MatchPriorityQueue
+
+var lastMatch *MatchData
+
+// ----------------------------------------------------------------------------------------------------
 
 func runSimulation() {
 
@@ -329,7 +371,7 @@ func runSimulation() {
 
 	for {
 
-		i := seconds % SecondsPerDay
+		t := seconds % SecondsPerDay
 
 		// add new players to the simulation
 
@@ -343,7 +385,7 @@ func runSimulation() {
 
 			for k := uint64(0); k < step; k++ {
 
-				index := i + k
+				index := t + k
 
 				for j := range newPlayerData[index] {
 
@@ -381,33 +423,29 @@ func runSimulation() {
 			wg.Done()
 		}()
 
-		// listen for match finished events
-
-		done := false
+		// handle any matches that have finished
 
 		for {
 
-			var match *MatchData
+			if lastMatch == nil && len(matchQueue) > 0 {
+				lastMatch = heap.Pop(&matchQueue).(*MatchData)
+			}
 
-			select {
-		    case match = <-endMatchChan:
-		    default:
-				done = true
-		    }		
+			if lastMatch == nil || lastMatch.priority > t {
+				break
+			}
 
-		    if done {
-		    	break
+		    for i := range lastMatch.players {
+				// if percentChance(PlayAgainPercent) {
+					fmt.Printf("playing again #%d\n", lastMatch.players[i].playerId)
+					lastMatch.players[i].state = PlayerState_BetweenMatches
+					lastMatch.players[i].counter = 0
+					lastMatch.players[i].datacenterId = 0
+					activePlayers[lastMatch.players[i].playerId] = lastMatch.players[i]
+				// }
 		    }
 
-		    for i := range match.players {
-				if percentChance(PlayAgainPercent) {
-					fmt.Printf("playing again #%d\n", match.players[i].playerId)
-					match.players[i].state = PlayerState_BetweenMatches
-					match.players[i].counter = 0
-					match.players[i].datacenterId = 0
-					activePlayers[match.players[i].playerId] = match.players[i]
-				}
-		    }
+		    lastMatch = nil
 		}
 
 		// iterate across all active players
@@ -504,7 +542,7 @@ func runSimulation() {
 
 			} else if activePlayers[i].state == PlayerState_WarmBody {
 
-				// todo: thing hard about what we want to do here
+				// todo: think hard about what we want to do here
 
 				/*
 				numWarmBody++
@@ -567,23 +605,20 @@ func runSimulation() {
 						// fmt.Fprintf(matchesFile, "%d,%.1f,%.1f,%s,%.1f,%.1f\n", seconds, matchPlayers[j].latitude, matchPlayers[j].longitude, datacenter.name, latency, matchPlayers[j].matchingTime)
 					}
 
-					// remove players from active player set -- big speed up here
+					// remove players from active player set
 
 					for j := 0; j < PlayersPerMatch; j++ {
 						delete(activePlayers, matchPlayers[j].playerId)
 					}
 
-					// run a goroutine which sleeps for the duration of the match, then send an event to a channel when the match is done
+					// insert the match into the match queue. it will pop off when it's finished
 
 					matchData := MatchData{}
+					matchData.priority = uint64(i + MatchLengthSeconds)
+					matchData.players = make([]*ActivePlayer, len(matchPlayers))
 					copy(matchData.players, matchPlayers[:])
-
-					go func() {
-						// todo: fuck, we can't really sleep for real-time, can we? ... FML
-						time.Sleep(time.Second * MatchLengthSeconds)
-						endMatchChan <- &matchData
-					}()
-
+					heap.Push(&matchQueue, &matchData)
+	
 					// go to next match
 
 					playerCount = 0
