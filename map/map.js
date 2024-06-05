@@ -12,10 +12,11 @@ const origin_y = 0
 const spacing_x = 16
 const spacing_y = 16
 
-const color_radius = 4
-const max_radius = 7
+const min_radius = 2
+const mid_radius = 4
+const max_radius = 7.5
 
-const background = "rgb(10,10,10)"
+const background = "rgb(25,25,25)"
 
 ;(function () {
   let canvas, ctx, raw_mouse_x, raw_mouse_y, data, fadeout
@@ -31,6 +32,8 @@ const background = "rgb(10,10,10)"
     t = 0.0
 
     data = Array.apply(null, Array(size)).map(function (x, i) { return 0.0; }) 
+
+    radius = Array.apply(null, Array(size)).map(function (x, i) { return min_radius; }) 
 
     fadeout = Array.apply(null, Array(size)).map(function (x, i) { return 0.0; }) 
 
@@ -100,8 +103,6 @@ const background = "rgb(10,10,10)"
     mouse_x = raw_mouse_x / normalize_factor
     mouse_y = raw_mouse_y / normalize_factor
 
-    var radius = 0.0
-
     for (var j = 0; j < height-15; j++) {
       for (var i = 0; i < width; i++) {
 
@@ -110,32 +111,39 @@ const background = "rgb(10,10,10)"
         draw = false
 
         if (data[index] > 0.00001) {
-          fadeout[index] += ( 1.0 - fadeout[index] ) * 0.99999
-        } else {
-          fadeout[index] *= 0.99999
+          fadeout[index] += ( 1.0 - fadeout[index] ) * 0.01
         }
 
+        var rad = min_radius
+
         if (fadeout[index] > 0.00001) {
+
           draw = true
-          intensity = data[index] / 70
-          r = 50 * (0.25 + 0.25 * intensity)
-          g = 200 * (0.25 + 0.25 * intensity)
-          b = 255 * (0.25 + 0.25 * intensity)
+
+          intensity = data[index] / 2000
+          r = 100  * (0.25 + intensity)
+          g = 200 * (0.25 + intensity)
+          b = 255 * (0.25 + intensity)
           r = 10 + fadeout[index] * r
           g = 10 + fadeout[index] * g
           b = 10 + fadeout[index] * b
           color = 'rgb(' + r + ',' + g + ',' + b + ')'
-          intensity2 = intensity
-          intensity2 -= 15
-          if (intensity2 < 0) {
-            intensity2 = 0
+
+          if (data[index] < 1000) {
+            rad += ( mid_radius - min_radius ) * ( data[index] / 1000 )
+          } else {
+            d = data[index] - 1000
+            rad += ( max_radius - mid_radius ) * ( d / 1000 )
           }
-          radius = color_radius + intensity2 * 2
-          if (radius > max_radius) {
-            radius = max_radius
+          if (rad > max_radius) {
+            rad = max_radius
           }
         }
+
+        radius[index] += ( rad - radius[index] ) * 0.25
       
+        rad = radius[index]
+
         // draw circle
 
         x = origin_x + i*spacing_x
@@ -144,12 +152,12 @@ const background = "rgb(10,10,10)"
         x *= normalize_factor
         y *= normalize_factor
 
-        radius *= normalize_factor
+        rad *= normalize_factor
 
         if (draw) {
           ctx.fillStyle = color
           ctx.beginPath()
-          ctx.arc(x, y, radius, 0, 2 * Math.PI, true)
+          ctx.arc(x, y, rad, 0, 2 * Math.PI, true)
           ctx.fill()
           ctx.closePath()
         }

@@ -1,7 +1,13 @@
 DONE
 
-	...
+	Dig in and work out where to start with the article
+
+	Fix up the map so it's smooth and doesn't have any color pops.
 
 TODO
+	
+	Add smoothing for the circle radius
 
-	Dig in and work out where to start with the article
+	Make the map auto-adjust to maximum player count per-cell so it doesn't need manual configuration.
+
+	Add expanding focus circles when player counts in a cell pop up, to some maximum amount at a time.
