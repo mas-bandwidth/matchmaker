@@ -260,6 +260,8 @@ func initialize() {
 
 	activePlayers = make(map[uint64]*ActivePlayer)
 
+	inGamePlayers = make(map[uint64]*ActivePlayer)
+
 	fmt.Printf("ready!\n")
 
 	// create output files
@@ -310,6 +312,8 @@ type ActivePlayer struct {
 }
 
 var activePlayers map[uint64]*ActivePlayer
+
+var inGamePlayers map[uint64]*ActivePlayer
 
 // -----------------------------------------------------------------------------------------------------
 
@@ -364,8 +368,6 @@ func runSimulation() {
 	const MapWidth = 120
 	const MapHeight = 64
 	const MapSize = MapWidth * MapHeight
-
-	countData := make([]float64, MapSize)
 
 	step := uint64(1)
 
@@ -436,13 +438,13 @@ func runSimulation() {
 			}
 
 		    for i := range lastMatch.players {
-				// if percentChance(PlayAgainPercent) {
-					fmt.Printf("playing again #%d\n", lastMatch.players[i].playerId)
+				if percentChance(PlayAgainPercent) {
 					lastMatch.players[i].state = PlayerState_BetweenMatches
 					lastMatch.players[i].counter = 0
 					lastMatch.players[i].datacenterId = 0
 					activePlayers[lastMatch.players[i].playerId] = lastMatch.players[i]
-				// }
+					delete(inGamePlayers, lastMatch.players[i].playerId)
+				}
 		    }
 
 		    lastMatch = nil
@@ -454,7 +456,6 @@ func runSimulation() {
 		numIdeal := 0
 		numExpand := 0
 		numWarmBody := 0
-		numPlaying := 0
 		numDelay := 0
 
 		warmBodies := make(map[uint64]*ActivePlayer)
@@ -618,6 +619,9 @@ func runSimulation() {
 					matchData.players = make([]*ActivePlayer, len(matchPlayers))
 					copy(matchData.players, matchPlayers[:])
 					heap.Push(&matchQueue, &matchData)
+					for i := range matchPlayers {
+						inGamePlayers[matchPlayers[i].playerId] = matchPlayers[i]
+					}
 	
 					// go to next match
 
@@ -649,7 +653,7 @@ func runSimulation() {
 
 		time := secondsToTime(seconds)
 		
-		fmt.Printf("%s: %10d playing %10d delay %5d new %5d ideal %5d expand %4d warmbody\n", time.Format("2006-01-02 15:04:05"), numPlaying, numDelay, numNew, numIdeal, numExpand, numWarmBody)
+		fmt.Printf("%s: %10d playing %10d delay %5d new %5d ideal %5d expand %4d warmbody\n", time.Format("2006-01-02 15:04:05"), len(inGamePlayers), numDelay, numNew, numIdeal, numExpand, numWarmBody)
 
 		// fmt.Printf("%s\n", secondsToTime(seconds))
 
@@ -677,19 +681,18 @@ func runSimulation() {
 
 		// update map data
 
-		// todo: we need a map of in-game players
+		var countData [MapSize]float64
+
+		// todo: add some code to only update counts when players are added and removed from in game players set -- much faster
 		/*
-		for i := range activePlayers {
-			if activePlayers[i].state != PlayerState_Playing {
-				continue
-			}
-			ix := int( ( activePlayers[i].longitude + MaxLongitude ) / 3.0 )
+		for i := range inGamePlayers {
+			ix := int( ( inGamePlayers[i].longitude + MaxLongitude ) / 3.0 )
 			if ix < 0 {
 				ix = 0
 			} else if ix >= MapWidth {
 				ix = MapWidth - 1
 			}
-			iy := int( ( MaxLatitude - activePlayers[i].latitude ) / 3.0 )
+			iy := int( ( MaxLatitude - inGamePlayers[i].latitude ) / 3.0 )
 			if iy < 0 {
 				iy = 0
 			} else if iy >= MapHeight {
