@@ -13,10 +13,10 @@ const spacing_x = 16
 const spacing_y = 16
 
 const min_radius = 2
-const mid_radius = 4
+const mid_radius = 5
 const max_radius = 7.5
 
-const background = "rgb(25,25,25)"
+const background = "rgb(15,15,15)"
 
 ;(function () {
   let canvas, ctx, raw_mouse_x, raw_mouse_y, data, fadeout
@@ -121,12 +121,12 @@ const background = "rgb(25,25,25)"
           draw = true
 
           intensity = data[index] / 2000
-          r = 100  * (0.25 + intensity)
-          g = 200 * (0.25 + intensity)
-          b = 255 * (0.25 + intensity)
-          r = 10 + fadeout[index] * r
-          g = 10 + fadeout[index] * g
-          b = 10 + fadeout[index] * b
+          r = 45 + 100 * (0.25 + intensity)
+          g = 45 + 200 * (0.25 + intensity)
+          b = 45 + 255 * (0.25 + intensity)
+          r = 15 + fadeout[index] * r
+          g = 15 + fadeout[index] * g
+          b = 15 + fadeout[index] * b
           color = 'rgb(' + r + ',' + g + ',' + b + ')'
 
           if (data[index] < 1000) {
