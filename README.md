@@ -2,7 +2,38 @@
 
 ## Goal
 
-Find low latency matches as quickly as possible.
+Find acceptable latency matches as quickly as possible.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-------------------------------------------------------------------------
+Old
+-------------------------------------------------------------------------
 
 ## Strategy
 

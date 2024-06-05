@@ -19,7 +19,7 @@ const max_radius = 7.5
 const background = "rgb(15,15,15)"
 
 ;(function () {
-  let canvas, ctx, raw_mouse_x, raw_mouse_y, data, fadeout
+  let canvas, ctx, raw_mouse_x, raw_mouse_y, data, fadeout, max_players
 
   function init() {
 
@@ -30,6 +30,8 @@ const background = "rgb(15,15,15)"
     window.requestAnimationFrame(update)
 
     t = 0.0
+
+    max_players = 0.0
 
     data = Array.apply(null, Array(size)).map(function (x, i) { return 0.0; }) 
 
@@ -103,12 +105,18 @@ const background = "rgb(15,15,15)"
     mouse_x = raw_mouse_x / normalize_factor
     mouse_y = raw_mouse_y / normalize_factor
 
-    for (var j = 0; j < height-15; j++) {
+    new_max_players = 0.0
+
+    for (var j = 0; j < height; j++) {
       for (var i = 0; i < width; i++) {
 
         index = i + j*width
 
         draw = false
+
+        if (data[index] > new_max_players) {
+          new_max_players = data[index]
+        }
 
         if (data[index] > 0.00001) {
           fadeout[index] += ( 1.0 - fadeout[index] ) * 0.01
@@ -120,7 +128,9 @@ const background = "rgb(15,15,15)"
 
           draw = true
 
-          intensity = data[index] / 2000
+          m = max_players / 10
+
+          intensity = data[index] / m
           r = 25 + 75 * (0.25 + intensity)
           g = 25 + 170 * (0.25 + intensity)
           b = 25 + 255 * (0.25 + intensity)
@@ -129,11 +139,11 @@ const background = "rgb(15,15,15)"
           b = 15 + fadeout[index] * b
           color = 'rgb(' + r + ',' + g + ',' + b + ')'
 
-          if (data[index] < 1000) {
-            rad += ( mid_radius - min_radius ) * ( data[index] / 1000 )
+          if (data[index] < m ) {
+            rad += ( mid_radius - min_radius ) * ( data[index] / m )
           } else {
-            d = data[index] - 1000
-            rad += ( max_radius - mid_radius ) * ( d / 1000 )
+            d = data[index] - m
+            rad += ( max_radius - mid_radius ) * ( d / m )
           }
           if (rad > max_radius) {
             rad = max_radius
@@ -163,6 +173,8 @@ const background = "rgb(15,15,15)"
         }
       }
     }
+
+    max_players = new_max_players
 
     t += dt
   }

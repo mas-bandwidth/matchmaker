@@ -40,21 +40,20 @@ import (
 )
 
 const PlayersPerMatch = 4
-const DelaySeconds = 50
-const PlayAgainPercent = 96
-const MatchLengthSeconds = 180
-const IdealTime = 60
-const ExpandTime = 60
-const WarmBodyTime = 60
+const BetweenMatchSeconds = 30
+const PlayAgainPercent = 70
+const MatchLengthSeconds = 300
+const IdealTime = 30
+const ExpandTime = 30
+const WarmBodyTime = 30
 const SpeedOfLightFactor = 2
 
-const IdealCostThreshold = 300
-const IdealCostSpread = 10
+const IdealCostThreshold = 50
 const ExpandMaxCost = 200
 const ExpandCostSpread = 10
-const WarmBodyCostThreshold = 255
+const WarmBodyCostThreshold = 100
 
-const SampleDays = 20           // the number of days worth of samples contained in players.csv
+const SampleDays = 20 // the number of days worth of samples contained in players.csv
 
 const LatencyMapWidth = 360
 const LatencyMapHeight = 180
@@ -181,6 +180,8 @@ func initialize() {
 
 	scanner := bufio.NewScanner(f)
 
+	endMatchChan = make(chan *MatchData, 100000)
+
 	newPlayerData = make([][]NewPlayerData, SecondsPerDay)
 
 	for scanner.Scan() {
@@ -280,8 +281,7 @@ const PlayerState_Ideal = 1
 const PlayerState_Expand = 2
 const PlayerState_WarmBody = 3
 const PlayerState_Playing = 4
-const PlayerState_Bots = 5
-const PlayerState_Delay = 6
+const PlayerState_BetweenMatches = 5
 
 type DatacenterCostMapEntry struct {
 	index int
@@ -308,11 +308,16 @@ type ActivePlayer struct {
 
 var activePlayers map[uint64]*ActivePlayer
 
+type MatchData struct {
+	players []*ActivePlayer
+}
+
+var endMatchChan chan *MatchData
+
 func runSimulation() {
 
 	var seconds uint64
 	var playerId uint64
-	var totalBots uint64
 
 	const MapWidth = 120
 	const MapHeight = 64
@@ -320,42 +325,89 @@ func runSimulation() {
 
 	countData := make([]float64, MapSize)
 
+	step := uint64(1)
+
 	for {
 
 		i := seconds % SecondsPerDay
 
 		// add new players to the simulation
 
-		for j := range newPlayerData[i] {
+		var wg sync.WaitGroup
 
-			if !chance(SampleDays) {
-				continue
+		wg.Add(1)
+
+		newPlayers := make(map[uint64]*ActivePlayer)
+
+		go func() {
+
+			for k := uint64(0); k < step; k++ {
+
+				index := i + k
+
+				for j := range newPlayerData[index] {
+
+					if !chance(SampleDays) {
+						continue
+					}
+
+					activePlayer := ActivePlayer{}
+
+					activePlayer.playerId = playerId
+					activePlayer.latitude = newPlayerData[index][j].latitude
+					activePlayer.longitude = newPlayerData[index][j].longitude
+					activePlayer.datacenterCostMap = make(map[uint64]DatacenterCostMapEntry)
+					activePlayer.datacenterCosts = make([]DatacenterCostEntry, len(datacenters))
+
+					index := 0
+					for k, v := range datacenters {
+						milliseconds := datacenterRTT(v, activePlayer.latitude, activePlayer.longitude)
+						activePlayer.datacenterCostMap[k] = DatacenterCostMapEntry{cost: milliseconds, index: index}
+						activePlayer.datacenterCosts[index].datacenterId = k
+						activePlayer.datacenterCosts[index].cost = milliseconds
+						index++
+					}
+
+					sort.SliceStable(activePlayer.datacenterCosts[:], func(i, j int) bool {
+						return activePlayer.datacenterCosts[i].cost < activePlayer.datacenterCosts[j].cost
+					})
+
+					newPlayers[playerId] = &activePlayer
+
+					playerId++
+				}
 			}
 
-			activePlayer := ActivePlayer{}
+			wg.Done()
+		}()
 
-			activePlayer.playerId = playerId
-			activePlayer.latitude = newPlayerData[i][j].latitude
-			activePlayer.longitude = newPlayerData[i][j].longitude
-			activePlayer.datacenterCostMap = make(map[uint64]DatacenterCostMapEntry)
-			activePlayer.datacenterCosts = make([]DatacenterCostEntry, len(datacenters))
+		// listen for match finished events
 
-			index := 0
-			for k, v := range datacenters {
-				milliseconds := datacenterRTT(v, activePlayer.latitude, activePlayer.longitude)
-				activePlayer.datacenterCostMap[k] = DatacenterCostMapEntry{cost: milliseconds, index: index}
-				activePlayer.datacenterCosts[index].datacenterId = k
-				activePlayer.datacenterCosts[index].cost = milliseconds
-				index++
-			}
+		done := false
 
-			sort.SliceStable(activePlayer.datacenterCosts[:], func(i, j int) bool {
-				return activePlayer.datacenterCosts[i].cost < activePlayer.datacenterCosts[j].cost
-			})
+		for {
 
-			activePlayers[playerId] = &activePlayer
+			var match *MatchData
 
-			playerId++
+			select {
+		    case match = <-endMatchChan:
+		    default:
+				done = true
+		    }		
+
+		    if done {
+		    	break
+		    }
+
+		    for i := range match.players {
+				if percentChance(PlayAgainPercent) {
+					fmt.Printf("playing again #%d\n", match.players[i].playerId)
+					match.players[i].state = PlayerState_BetweenMatches
+					match.players[i].counter = 0
+					match.players[i].datacenterId = 0
+					activePlayers[match.players[i].playerId] = match.players[i]
+				}
+		    }
 		}
 
 		// iterate across all active players
@@ -384,12 +436,10 @@ func runSimulation() {
 
 					activePlayers[i].state = PlayerState_Ideal
 
-					costLimit := activePlayers[i].datacenterCosts[0].cost + IdealCostSpread
-
 					for j := range activePlayers[i].datacenterCosts {
 						datacenterId := activePlayers[i].datacenterCosts[j].datacenterId
 						datacenterCost := activePlayers[i].datacenterCosts[j].cost
-						if datacenterCost <= costLimit {
+						if datacenterCost <= IdealCostThreshold {
 							datacenters[datacenterId].playerQueue = append(datacenters[datacenterId].playerQueue, activePlayers[i])
 						}
 					}
@@ -427,6 +477,8 @@ func runSimulation() {
 
 				expandStartCost := activePlayers[i].datacenterCosts[0].cost + ExpandCostSpread
 
+				// todo: clean up spread. don't need this
+
 				cost := expandStartCost + t*(ExpandMaxCost-expandStartCost)
 
 				for datacenterId, datacenter := range datacenters {
@@ -452,57 +504,24 @@ func runSimulation() {
 
 			} else if activePlayers[i].state == PlayerState_WarmBody {
 
+				// todo: thing hard about what we want to do here
+
+				/*
 				numWarmBody++
 
 				activePlayers[i].counter++
 				activePlayers[i].matchingTime += 1.0
 
-				if activePlayers[i].counter > WarmBodyTime {
-					activePlayers[i].state = PlayerState_Bots
-					activePlayers[i].counter = MatchLengthSeconds
-					totalBots++
-				} else {
-					warmBodies[i] = activePlayers[i]
-				}
+				warmBodies[i] = activePlayers[i]
+				*/
 
-			} else if activePlayers[i].state == PlayerState_Playing {
-
-				numPlaying++
-
-				activePlayers[i].counter++
-
-				if activePlayers[i].counter > MatchLengthSeconds {
-					datacenters[activePlayers[i].datacenterId].playerCount--
-					if percentChance(PlayAgainPercent) {
-						activePlayers[i].state = PlayerState_Delay
-						activePlayers[i].counter = 0
-						activePlayers[i].datacenterId = 0
-					} else {
-						delete(activePlayers, i)
-					}
-				}
-
-			} else if activePlayers[i].state == PlayerState_Bots {
-
-				activePlayers[i].counter++
-
-				if activePlayers[i].counter > MatchLengthSeconds {
-					if percentChance(PlayAgainPercent) {
-						activePlayers[i].state = PlayerState_Delay
-						activePlayers[i].counter = 0
-						activePlayers[i].datacenterId = 0
-					} else {
-						delete(activePlayers, i)
-					}
-				}
-
-			} else if activePlayers[i].state == PlayerState_Delay {
+			} else if activePlayers[i].state == PlayerState_BetweenMatches {
 
 				numDelay++
 
 				activePlayers[i].counter++
 
-				if activePlayers[i].counter > DelaySeconds {
+				if activePlayers[i].counter > BetweenMatchSeconds {
 					activePlayers[i].state = PlayerState_New
 					activePlayers[i].counter = 0
 					activePlayers[i].datacenterId = 0
@@ -527,6 +546,9 @@ func runSimulation() {
 				}
 
 				if playerCount == PlayersPerMatch {
+					
+					// calculate average time spent in matchmaking, average latency etc...
+
 					for j := 0; j < PlayersPerMatch; j++ {
 						datacenter.playerCount++
 						latency := 0.0
@@ -544,15 +566,35 @@ func runSimulation() {
 						matchPlayers[j].counter = 0
 						// fmt.Fprintf(matchesFile, "%d,%.1f,%.1f,%s,%.1f,%.1f\n", seconds, matchPlayers[j].latitude, matchPlayers[j].longitude, datacenter.name, latency, matchPlayers[j].matchingTime)
 					}
+
+					// remove players from active player set -- big speed up here
+
+					for j := 0; j < PlayersPerMatch; j++ {
+						delete(activePlayers, matchPlayers[j].playerId)
+					}
+
+					// run a goroutine which sleeps for the duration of the match, then send an event to a channel when the match is done
+
+					matchData := MatchData{}
+					copy(matchData.players, matchPlayers[:])
+
+					go func() {
+						// todo: fuck, we can't really sleep for real-time, can we? ... FML
+						time.Sleep(time.Second * MatchLengthSeconds)
+						endMatchChan <- &matchData
+					}()
+
+					// go to next match
+
 					playerCount = 0
 				}
 
 			}
 
-			newPlayerQueue := make([]*ActivePlayer, 0, 1024)
+			newPlayerQueue := make([]*ActivePlayer, 0, 10*1024)
 
 			for i := range datacenter.playerQueue {
-				if datacenter.playerQueue[i].state == PlayerState_Ideal {
+				if datacenter.playerQueue[i].state == PlayerState_Ideal || datacenter.playerQueue[i].state == PlayerState_Expand {
 					newPlayerQueue = append(newPlayerQueue, datacenter.playerQueue[i])
 				}
 			}
@@ -564,24 +606,15 @@ func runSimulation() {
 
 		for _, warmBody := range warmBodies {
 			for _, datacenter := range datacenters {
-				found := false
-				for i := range datacenter.playerQueue {
-					if datacenter.playerQueue[i].playerId == warmBody.playerId {
-						found = true
-						break
-					}
-				}
-				if !found {
-					datacenter.playerQueue = append(datacenter.playerQueue, warmBody)
-				}
+				datacenter.playerQueue = append(datacenter.playerQueue, warmBody)
 			}
 		}
 
 		// write stats
 
-		// time := secondsToTime(seconds)
-
-		// fmt.Printf("%s: %10d playing %10d delay %5d new %5d ideal %5d expand %4d warmbody %4d bot matches\n", time.Format("2006-01-02 15:04:05"), numPlaying, numDelay, numNew, numIdeal, numExpand, numWarmBody, totalBots)
+		time := secondsToTime(seconds)
+		
+		fmt.Printf("%s: %10d playing %10d delay %5d new %5d ideal %5d expand %4d warmbody\n", time.Format("2006-01-02 15:04:05"), numPlaying, numDelay, numNew, numIdeal, numExpand, numWarmBody)
 
 		// fmt.Printf("%s\n", secondsToTime(seconds))
 
@@ -607,10 +640,10 @@ func runSimulation() {
 		}
 		*/
 
-		seconds++
-
 		// update map data
 
+		// todo: we need a map of in-game players
+		/*
 		for i := range activePlayers {
 			if activePlayers[i].state != PlayerState_Playing {
 				continue
@@ -630,21 +663,30 @@ func runSimulation() {
 			index := ix + iy*MapWidth
 			countData[index]++
 		}
+		*/
 
-		if ( seconds % 10 ) == 0 {
-
-			data := make([]uint8, MapSize*4)
-			for i := 0; i < MapSize; i++ {
-				intData := uint32(countData[i])
-				binary.LittleEndian.PutUint32(data[i*4:], intData)
-			}
-
-			mapDataMutex.Lock()
-			mapData = data
-			mapDataMutex.Unlock()
-
-			countData = make([]float64, MapSize)
+		data := make([]uint8, MapSize*4)
+		for i := 0; i < MapSize; i++ {
+			intData := uint32(countData[i])
+			binary.LittleEndian.PutUint32(data[i*4:], intData)
+			countData[i] = 0
 		}
+
+		mapDataMutex.Lock()
+		mapData = data
+		mapDataMutex.Unlock()
+
+		// add new players
+
+		wg.Wait()
+
+		for k,v := range newPlayers {
+			activePlayers[k] = v
+		}
+
+		// advance time
+
+		seconds += step
 	}
 }
 
@@ -700,3 +742,4 @@ func dataHandler(w http.ResponseWriter, r *http.Request) {
 	mapDataMutex.RUnlock()
 	w.Write(data)
 }
+

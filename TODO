@@ -6,14 +6,44 @@ DONE
 
 	Add smoothing for the circle radius
 
-TODO
+	Tune the colors and radius motion
 
 	Optimize the simulator so I can have more players running, or the same number of players running, but time moves faster.
 
-	--> perhaps each datacenter can run on their own thread?
+	Do less work, and do it in ||
+
+	Adding new players to the simulation can be done in || with the rest, eg. run it as a goroutine, in outputs a set of new active players, 
+
+	Work 10 seconds at a time, instead of one second.
+
+	I should be able to get an order of magnitude speed up, if I don't walk the players who are in game or waiting.
+
+	To do this, I should be able to spin off goroutines that wait n seconds, and then report back with an event in a channel when they are finished.
+
+	Add the event for "end match" -- it could include a list of active players.
+
+	Add the channel for "end match"
+
+	Spin up a goroutine to sleep for match length when players join a match
+
+TODO
+
+	...
+
+	--------------------------
+
+	Instead of walking all active players once per-second, and checking their states, active players can run in goroutines, and have sleeps or tickers so they wake up only when they need to do work?
+
+	--------------------------
+
+	And then there could be a tick per-datacenter, where the datacenter could attempt to grab players 
 	
 	--------------------------
 
 	Make the map auto-adjust to maximum player count per-cell so it doesn't need manual configuration.
 
+	--------------------------
+
 	Add expanding focus circles when player counts in a cell pop up, to some maximum amount at a time.
+
+	--------------------------
