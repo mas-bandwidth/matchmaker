@@ -1,6 +1,6 @@
 
 const dt = 1.0 / 60.0
-const standard_width = 2000
+const standard_width = 1900
 const standard_height = 940
 const width = 120
 const height = 64
@@ -121,9 +121,9 @@ const background = "rgb(15,15,15)"
           draw = true
 
           intensity = data[index] / 2000
-          r = 45 + 100 * (0.25 + intensity)
-          g = 45 + 200 * (0.25 + intensity)
-          b = 45 + 255 * (0.25 + intensity)
+          r = 25 + 75 * (0.25 + intensity)
+          g = 25 + 170 * (0.25 + intensity)
+          b = 25 + 255 * (0.25 + intensity)
           r = 15 + fadeout[index] * r
           g = 15 + fadeout[index] * g
           b = 15 + fadeout[index] * b

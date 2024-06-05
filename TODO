@@ -9,7 +9,11 @@ DONE
 TODO
 
 	Optimize the simulator so I can have more players running, or the same number of players running, but time moves faster.
+
+	--> perhaps each datacenter can run on their own thread?
 	
+	--------------------------
+
 	Make the map auto-adjust to maximum player count per-cell so it doesn't need manual configuration.
 
 	Add expanding focus circles when player counts in a cell pop up, to some maximum amount at a time.

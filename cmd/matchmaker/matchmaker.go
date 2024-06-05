@@ -230,7 +230,7 @@ func initialize() {
 	}
 
 	for _, v := range datacenters {
-		v.playerQueue = make([]*ActivePlayer, 0, 1024)
+		v.playerQueue = make([]*ActivePlayer, 0, 10 * 1024)
 	}
 
 	// load latency maps for each datacenter
