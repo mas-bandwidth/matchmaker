@@ -1,5 +1,5 @@
 /*
-	Matchmaker
+	Matchmaker Simulation
 
 	Copyright (c) 2023 - 2024, Mas Bandwidth LLC. All rights reserved.
 
@@ -47,7 +47,7 @@ const MapSize = MapWidth * MapHeight
 const PlayersPerMatch = 4
 const MatchLengthSeconds = 300
 const BetweenMatchSeconds = 30
-const PlayAgainPercent = 70
+const PlayAgainPercent = 75
 const IdealTime = 10
 const ExpandTime = 10
 const WarmBodyTime = 10
@@ -56,7 +56,7 @@ const SpeedOfLightFactor = 2
 const IdealCostThreshold = 50
 const ExpandCostThreshold = 100
 
-const SampleDays = 30 // the number of days worth of samples contained in players.csv
+const SampleDays = 1 // the number of days worth of samples contained in players.csv
 
 const LatencyMapWidth = 360
 const LatencyMapHeight = 180
@@ -168,7 +168,7 @@ type Datacenter struct {
 	playerCount         int
 	playerQueue         []*ActivePlayer
 	averageLatency      float64
-	averageMatchingTime float64
+	averageSearchTime   float64
 	latencyMap          []float32
 }
 
@@ -180,6 +180,8 @@ var statsFile *os.File
 func initialize() {
 
 	fmt.Printf("initializing...\n")
+
+	rand.Seed(time.Now().UnixNano())
 
 	// load the players.csv file and parse it
 
@@ -528,6 +530,8 @@ func runSimulation() {
 						datacenterCost := activePlayers[i].datacenterCosts[j].cost
 						if datacenterCost <= IdealCostThreshold {
 							datacenters[datacenterId].playerQueue = append(datacenters[datacenterId].playerQueue, activePlayers[i])
+						} else {
+							break
 						}
 					}
 
@@ -540,6 +544,8 @@ func runSimulation() {
 						datacenterCost := activePlayers[i].datacenterCosts[j].cost
 						if datacenterCost <= ExpandCostThreshold {
 							datacenters[datacenterId].playerQueue = append(datacenters[datacenterId].playerQueue, activePlayers[i])
+						} else if datacenterCost > ExpandCostThreshold {
+							break
 						}
 					}
 
@@ -549,7 +555,9 @@ func runSimulation() {
 
 				}
 
-			} else if activePlayers[i].state == PlayerState_Ideal {
+			}
+
+			if activePlayers[i].state == PlayerState_Ideal {
 
 				numIdeal++
 
@@ -597,6 +605,21 @@ func runSimulation() {
 			}
 		}
 
+		// write stats
+
+		time := secondsToTime(seconds)
+
+		averageLatency := 0.0
+		averageSearchTime := 0.0
+		for _, v := range datacenters {
+			averageLatency += v.averageLatency
+			averageSearchTime += v.averageSearchTime
+		}
+		averageLatency /= float64(len(datacenters))
+		averageSearchTime /= float64(len(datacenters))
+
+		fmt.Printf("%s: %10d playing %8d between matches %5d new %5d ideal %5d expand %4d warmbody %4d fail %4ds search time %4dms latency\n", time.Format("2006-01-02 15:04:05"), len(inGamePlayers), len(betweenMatchPlayers), numNew, numIdeal, numExpand, numWarmBody, numFailures, int(math.Ceil(averageSearchTime)), int(math.Ceil(averageLatency)))
+
 		// iterate across all datacenter queues
 
 		for datacenterId, datacenter := range datacenters {
@@ -615,7 +638,7 @@ func runSimulation() {
 
 				if playerCount == PlayersPerMatch {
 					
-					// calculate average time spent in matchmaking, average latency etc...
+					// update stats
 
 					for j := 0; j < PlayersPerMatch; j++ {
 						datacenter.playerCount++
@@ -627,7 +650,7 @@ func runSimulation() {
 							}
 						}
 						datacenter.averageLatency += (latency - datacenter.averageLatency) * 0.05
-						datacenter.averageMatchingTime += (matchPlayers[j].matchingTime - datacenter.averageMatchingTime) * 0.01
+						datacenter.averageSearchTime += (matchPlayers[j].matchingTime - datacenter.averageSearchTime) * 0.01
 						matchPlayers[j].state = PlayerState_Playing
 						matchPlayers[j].datacenterId = datacenterId
 						matchPlayers[j].latency = latency
@@ -683,33 +706,13 @@ func runSimulation() {
 			}
 		}
 
-		// write stats
+		// shuffle datacenter queues
 
-		time := secondsToTime(seconds)
-		
-		fmt.Printf("%s: %10d playing %10d between matches %5d new %5d ideal %5d expand %4d warmbody %4d failures\n", time.Format("2006-01-02 15:04:05"), len(inGamePlayers), len(betweenMatchPlayers), numNew, numIdeal, numExpand, numWarmBody, numFailures)
-
-		/*
-		datacenterArray := make([]*Datacenter, len(datacenters))
-
-		index := 0
-		for _, v := range datacenters {
-			datacenterArray[index] = v
-			index++
+		for _, datacenter := range datacenters {
+			rand.Shuffle(len(datacenter.playerQueue), func(i, j int) {
+			    datacenter.playerQueue[i], datacenter.playerQueue[j] = datacenter.playerQueue[j], datacenter.playerQueue[i]
+			})
 		}
-
-		sort.SliceStable(datacenterArray[:], func(i, j int) bool {
-			return datacenterArray[i].name < datacenterArray[j].name
-		})
-
-		sort.SliceStable(datacenterArray[:], func(i, j int) bool {
-			return datacenterArray[i].playerCount > datacenterArray[j].playerCount
-		})
-
-		for i := range datacenterArray {
-			fmt.Fprintf(statsFile, "%d,%s,%d,%.1f,%.1f\n", seconds, datacenterArray[i].name, datacenterArray[i].playerCount, datacenterArray[i].averageLatency, datacenterArray[i].averageMatchingTime)
-		}
-		*/
 
 		// update map data
 

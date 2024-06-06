@@ -58,8 +58,16 @@ DONE
 
 	Add failure state if we can't find a match.
 
+	Adjust so time moves really fast.
+
+	Track average time to find a match
+
+	Track average latency
+
+	Shuffle datacenter queues
+
+	Add better stats for ideal queue, before queues are processed.
+
 TODO
 
-	Do one last profile to see where the time is going
-
-	--------------------------
+	What's next?
