@@ -58,7 +58,7 @@ const ExpandMaxCost = 200
 const ExpandCostSpread = 10
 const WarmBodyCostThreshold = 100
 
-const SampleDays = 1 // the number of days worth of samples contained in players.csv
+const SampleDays = 30 // the number of days worth of samples contained in players.csv
 
 const LatencyMapWidth = 360
 const LatencyMapHeight = 180
@@ -100,7 +100,7 @@ func randomInt(min int, max int) int {
 }
 
 func secondsToTime(second uint64) time.Time {
-	startTime := time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)
+	startTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	return startTime.Add(time.Duration(second) * time.Second)
 }
 
@@ -453,14 +453,12 @@ func runSimulation() {
 				delete(inGamePlayers, player.playerId)
 				index := getPlayerMapIndex(player)
 				countData[index]--
-				/*
 				if percentChance(PlayAgainPercent) {
-					player.state = PlayerState_New // PlayerState_BetweenMatches
+					player.state = PlayerState_BetweenMatches
 					player.counter = 0
 					player.datacenterId = 0
 					activePlayers[player.playerId] = player
 				}
-				*/
 		    }
 
 		    lastMatch = nil
