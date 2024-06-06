@@ -1,73 +1,33 @@
 DONE
 
-	Dig in and work out where to start with the article
+	Profile again, see if there is still any low hanging fruit...
 
-	Fix up the map so it's smooth and doesn't have any color pops.
-
-	Add smoothing for the circle radius
-
-	Tune the colors and radius motion
-
-	Optimize the simulator so I can have more players running, or the same number of players running, but time moves faster.
-
-	Do less work, and do it in ||
-
-	Adding new players to the simulation can be done in || with the rest, eg. run it as a goroutine, in outputs a set of new active players, 
-
-	Work 10 seconds at a time, instead of one second.
-
-	Make the map auto-adjust to maximum player count per-cell so it doesn't need manual configuration.
-
-	I should be able to get an order of magnitude speed up, if I don't walk the players who are in game or waiting.
-
-	To do this, I should be able to spin off goroutines that wait n seconds, and then report back with an event in a channel when they are finished.
-
-	Add the event for "end match" -- it could include a list of active players.
-
-	Add the channel for "end match"
-
-	Spin up a goroutine to sleep for match length when players join a match
-
-	Can't use a sleep because it's not operating in real time.
-
-	Implement a priority queue sorted on time t (seconds), which is set to when the match ends.
-
-	Each frame, simply dequeue the matches that have end match time < t, and add their players back into active players
-
-	Add inGamePlayers map
-
-	Count the inGamePlayers map cells and generate the map data for http request.
-
-	Iterating across all in game players is slow, to get around this, only update counts when players go into match, and when they leave.
-
-	This should get it super fast.
-
-	It's fast enough. Now check for correctness.
-
-	I want to see a graph of the total number of players over time. It looks a bit funny, like it's going up/down on an hourly basis, which doesn't make sense.
-
-	Seems like their are pulses on the hour in the second data set. Switching back to the first.
-
-	Optimize the get new players so it doesn't walk the full set of new players each second
-
-	Optimize the between matches state
-
-	Code review the logic for ideal -> expand -> warm body
-
-	Simplify ideal -> expand -> warm transitions.
-
-	Add failure state if we can't find a match.
-
-	Adjust so time moves really fast.
-
-	Track average time to find a match
-
-	Track average latency
-
-	Shuffle datacenter queues
-
-	Add better stats for ideal queue, before queues are processed.
+	Looks like it's reducing allocations, and fixing the datacenter lookup and sort.
 
 TODO
 
-	What's next?
+	First thing I can do is create a constant time lookup from lat/long to the set of datacenters sorted in latency order.
+
+	Then just point to this instead of calculating it each time a new player comes in
+
+	-------------
+
+	Then I need to look at allocations I'm doing, to see if I can remove them
+
+	-------------
+
+	Update index.html so the map can be dynamically sized according to the page?
+
+	-------------
+
+	Start writing the article?
+
+	-------------
+
+	Write terraform scripts to deploy the matchmaker to google cloud.
+
+	-------------
+
+	Integrate the map somehow with networknext.com main page?
+
+	-------------

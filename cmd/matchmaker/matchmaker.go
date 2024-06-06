@@ -35,6 +35,9 @@ import (
 	"net/http"
 	"encoding/binary"
 	"container/heap"
+	"flag"
+	"log"
+	"runtime/pprof"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
@@ -269,6 +272,34 @@ func initialize() {
 		v.latencyMap = floatArray
 	}
 
+	// create lookup for datacenters in latency order by lat, long
+
+	fmt.Printf("generating datacenter lookup map...\n")
+
+	for latitude := MinLatitude; latitude <= MaxLatitude; latitude++ {
+
+		for longitude := MinLongitude; longitude <= MaxLongitude; longitude++ {
+
+			datacenterCosts := make([]DatacenterCostEntry, len(datacenters))
+
+			index := 0
+			for k, v := range datacenters {
+				milliseconds := datacenterRTT(v, float64(latitude), float64(longitude))
+				datacenterCosts[index].datacenterId = k
+				datacenterCosts[index].cost = milliseconds
+				index++
+			}
+
+			sort.SliceStable(datacenterCosts[:], func(i, j int) bool {
+				return datacenterCosts[i].cost < datacenterCosts[j].cost
+			})
+
+			// todo
+
+			_ = datacenterCosts
+		}
+	}
+
 	// create active players hash (empty)
 
 	activePlayers = make(map[uint64]*ActivePlayer)
@@ -319,7 +350,6 @@ type ActivePlayer struct {
 	state             int
 	latitude          float64
 	longitude         float64
-	datacenterCostMap map[uint64]DatacenterCostMapEntry
 	datacenterCosts   []DatacenterCostEntry
 	counter           int
 	matchingTime      float64
@@ -423,13 +453,11 @@ func runSimulation() {
 				activePlayer.playerId = playerId
 				activePlayer.latitude = newPlayerData[index][player_index].latitude
 				activePlayer.longitude = newPlayerData[index][player_index].longitude
-				activePlayer.datacenterCostMap = make(map[uint64]DatacenterCostMapEntry)
 				activePlayer.datacenterCosts = make([]DatacenterCostEntry, len(datacenters))
 
 				index := 0
 				for k, v := range datacenters {
 					milliseconds := datacenterRTT(v, activePlayer.latitude, activePlayer.longitude)
-					activePlayer.datacenterCostMap[k] = DatacenterCostMapEntry{cost: milliseconds, index: index}
 					activePlayer.datacenterCosts[index].datacenterId = k
 					activePlayer.datacenterCosts[index].cost = milliseconds
 					index++
@@ -745,7 +773,20 @@ func shutdown() {
 	statsFile.Close()
 }
 
+var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+
 func main() {
+    
+    flag.Parse()
+    
+    if *cpuprofile != "" {
+        f, err := os.Create(*cpuprofile)
+        if err != nil {
+            log.Fatal(err)
+        }
+        pprof.StartCPUProfile(f)
+        defer pprof.StopCPUProfile()
+    }
 
 	go func() {
 		var router mux.Router
