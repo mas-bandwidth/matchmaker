@@ -11,8 +11,11 @@ body {
 
 canvas {
   background: #f8f8f8;
-  padding: 0;
-  margin: 0 auto;
-  margin-bottom: 1rem;
-  display: block;
+  position: absolute; 
+  top: 0px; 
+  left: 0px; 
+  right: 0px; 
+  bottom: 0px; 
+  margin: auto; 
+  border:2px
 }

@@ -19,7 +19,7 @@ const max_radius = 7.5
 const background = "rgb(15,15,15)"
 
 ;(function () {
-  let canvas, ctx, raw_mouse_x, raw_mouse_y, data, fadeout, max_players
+  let canvas, ctx, data, fadeout, max_players
 
   function init() {
 
@@ -38,19 +38,6 @@ const background = "rgb(15,15,15)"
     radius = Array.apply(null, Array(size)).map(function (x, i) { return min_radius; }) 
 
     fadeout = Array.apply(null, Array(size)).map(function (x, i) { return 0.0; }) 
-
-    raw_mouse_x = -1000
-    raw_mouse_y = -1000
-
-    canvas.addEventListener('mousemove', (e) => {
-      raw_mouse_x = e.offsetX
-      raw_mouse_y = e.offsetY
-    })
-
-    canvas.addEventListener('mouseleave', (e) => {
-      raw_mouse_x = -1000
-      raw_mouse_y = -1000
-    })
 
     update_data()
 
@@ -101,9 +88,6 @@ const background = "rgb(15,15,15)"
     canvas_width = canvas.getBoundingClientRect().width
 
     normalize_factor = canvas_width / standard_width
-
-    mouse_x = raw_mouse_x / normalize_factor
-    mouse_y = raw_mouse_y / normalize_factor
 
     new_max_players = 0.0
 

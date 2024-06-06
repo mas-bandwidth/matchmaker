@@ -56,7 +56,7 @@ const SpeedOfLightFactor = 2
 const IdealCostThreshold = 50
 const ExpandCostThreshold = 100
 
-const SampleDays = 1 // the number of days worth of samples contained in players.csv
+const SampleDays = 30 // the number of days worth of samples contained in players.csv
 
 const LatencyMapWidth = 360
 const LatencyMapHeight = 180
