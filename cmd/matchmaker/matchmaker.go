@@ -45,20 +45,18 @@ const MapHeight = 64
 const MapSize = MapWidth * MapHeight
 
 const PlayersPerMatch = 4
+const MatchLengthSeconds = 300
 const BetweenMatchSeconds = 30
 const PlayAgainPercent = 70
-const MatchLengthSeconds = 300
-const IdealTime = 30
-const ExpandTime = 30
-const WarmBodyTime = 30
+const IdealTime = 10
+const ExpandTime = 10
+const WarmBodyTime = 10
 const SpeedOfLightFactor = 2
 
 const IdealCostThreshold = 50
-const ExpandMaxCost = 200
-const ExpandCostSpread = 10
-const WarmBodyCostThreshold = 100
+const ExpandCostThreshold = 100
 
-const SampleDays = 30 // the number of days worth of samples contained in players.csv
+const SampleDays = 1 // the number of days worth of samples contained in players.csv
 
 const LatencyMapWidth = 360
 const LatencyMapHeight = 180
@@ -84,13 +82,6 @@ var newPlayerData [][]NewPlayerData
 
 func percentChance(threshold int) bool {
 	return randomInt(0, 100) <= threshold
-}
-
-func chance(n int) bool {
-	if rand.Intn(n) == 0 {
-		return true
-	}
-	return false
 }
 
 func randomInt(min int, max int) int {
@@ -280,6 +271,8 @@ func initialize() {
 
 	activePlayers = make(map[uint64]*ActivePlayer)
 
+	betweenMatchPlayers = make(map[uint64]*ActivePlayer)
+
 	inGamePlayers = make(map[uint64]*ActivePlayer)
 
 	fmt.Printf("ready!\n")
@@ -296,9 +289,10 @@ func initialize() {
 		panic(err)
 	}
 
-	// initialize the match priority queue
+	// initialize the priority queues
 
 	heap.Init(&matchQueue)
+	heap.Init(&betweenMatchesQueue)
 }
 
 const PlayerState_New = 0
@@ -334,6 +328,8 @@ type ActivePlayer struct {
 var activePlayers map[uint64]*ActivePlayer
 
 var inGamePlayers map[uint64]*ActivePlayer
+
+var betweenMatchPlayers map[uint64]*ActivePlayer
 
 // -----------------------------------------------------------------------------------------------------
 
@@ -376,7 +372,11 @@ func (pq *MatchPriorityQueue) Pop() any {
 
 var matchQueue MatchPriorityQueue
 
-var lastMatch *MatchData
+var betweenMatchesQueue MatchPriorityQueue
+
+var lastFinishedMatch *MatchData
+
+var lastBetweenMatch *MatchData
 
 // ----------------------------------------------------------------------------------------------------
 
@@ -449,37 +449,62 @@ func runSimulation() {
 
 		for {
 
-			if lastMatch == nil && len(matchQueue) > 0 {
-				lastMatch = heap.Pop(&matchQueue).(*MatchData)
+			if lastFinishedMatch == nil && len(matchQueue) > 0 {
+				lastFinishedMatch = heap.Pop(&matchQueue).(*MatchData)
 			}
 
-			if lastMatch == nil || lastMatch.priority > seconds {
+			if lastFinishedMatch == nil || lastFinishedMatch.priority > seconds {
 				break
 			}
 
-		    for i := range lastMatch.players {
-				player := lastMatch.players[i]
-				delete(inGamePlayers, player.playerId)
-				index := getPlayerMapIndex(player)
-				countData[index]--
+		    for i := range lastFinishedMatch.players {
+				player := lastFinishedMatch.players[i]
+                index := getPlayerMapIndex(player)
+                countData[index]--
+                delete(inGamePlayers, player.playerId)
+				betweenMatchPlayers[player.playerId] = player
+		    }
+
+			lastFinishedMatch.priority += BetweenMatchSeconds
+
+			heap.Push(&betweenMatchesQueue, lastFinishedMatch)
+
+		    lastFinishedMatch = nil
+		}
+
+		// handle between matches state transitioning back to searching for next match
+
+		for {
+
+			if lastBetweenMatch == nil && len(betweenMatchesQueue) > 0 {
+				lastBetweenMatch = heap.Pop(&betweenMatchesQueue).(*MatchData)
+			}
+
+			if lastBetweenMatch == nil || lastBetweenMatch.priority > seconds {
+				break
+			}
+
+		    for i := range lastBetweenMatch.players {
+				player := lastBetweenMatch.players[i]
+				delete(betweenMatchPlayers, player.playerId)
 				if percentChance(PlayAgainPercent) {
-					player.state = PlayerState_BetweenMatches
+					player.state = PlayerState_New
 					player.counter = 0
 					player.datacenterId = 0
 					activePlayers[player.playerId] = player
 				}
 		    }
 
-		    lastMatch = nil
+		    lastBetweenMatch = nil
 		}
 
-		// iterate across all active players
+		// iterate across all active players. these are players actively searching for a match
 
 		numNew := 0
 		numIdeal := 0
 		numExpand := 0
 		numWarmBody := 0
-		numBetweenMatches := 0
+		numFailures := 0
 
 		warmBodies := make(map[uint64]*ActivePlayer)
 
@@ -506,9 +531,17 @@ func runSimulation() {
 						}
 					}
 
-				} else if cost < WarmBodyCostThreshold {
+				} else if cost < ExpandCostThreshold {
 
 					activePlayers[i].state = PlayerState_Expand
+
+					for j := range activePlayers[i].datacenterCosts {
+						datacenterId := activePlayers[i].datacenterCosts[j].datacenterId
+						datacenterCost := activePlayers[i].datacenterCosts[j].cost
+						if datacenterCost <= ExpandCostThreshold {
+							datacenters[datacenterId].playerQueue = append(datacenters[datacenterId].playerQueue, activePlayers[i])
+						}
+					}
 
 				} else {
 
@@ -524,8 +557,15 @@ func runSimulation() {
 				activePlayers[i].matchingTime += 1.0
 
 				if activePlayers[i].counter > IdealTime {
-					activePlayers[i].state = PlayerState_WarmBody
+					activePlayers[i].state = PlayerState_Expand
 					activePlayers[i].counter = 0
+					for j := range activePlayers[i].datacenterCosts {
+						datacenterId := activePlayers[i].datacenterCosts[j].datacenterId
+						datacenterCost := activePlayers[i].datacenterCosts[j].cost
+						if datacenterCost > IdealCostThreshold && datacenterCost <= ExpandCostThreshold {
+							datacenters[datacenterId].playerQueue = append(datacenters[datacenterId].playerQueue, activePlayers[i])
+						}
+					}
 				}
 
 			} else if activePlayers[i].state == PlayerState_Expand {
@@ -535,30 +575,6 @@ func runSimulation() {
 				activePlayers[i].counter++
 				activePlayers[i].matchingTime += 1.0
 
-				t := float64(activePlayers[i].counter) / ExpandTime
-
-				expandStartCost := activePlayers[i].datacenterCosts[0].cost + ExpandCostSpread
-
-				// todo: clean up spread. don't need this
-
-				cost := expandStartCost + t*(ExpandMaxCost-expandStartCost)
-
-				for datacenterId, datacenter := range datacenters {
-					datacenterCost := activePlayers[i].datacenterCostMap[datacenterId].cost
-					if datacenterCost <= cost {
-						found := false
-						for j := range datacenter.playerQueue {
-							if datacenter.playerQueue[j].playerId == activePlayers[i].playerId {
-								found = true
-								break
-							}
-						}
-						if !found {
-							datacenter.playerQueue = append(datacenter.playerQueue, activePlayers[i])
-						}
-					}
-				}
-
 				if activePlayers[i].counter > ExpandTime {
 					activePlayers[i].state = PlayerState_WarmBody
 					activePlayers[i].counter = 0
@@ -566,28 +582,18 @@ func runSimulation() {
 
 			} else if activePlayers[i].state == PlayerState_WarmBody {
 
-				// todo: think hard about what we want to do here
-
-				/*
 				numWarmBody++
 
 				activePlayers[i].counter++
 				activePlayers[i].matchingTime += 1.0
 
 				warmBodies[i] = activePlayers[i]
-				*/
 
-			} else if activePlayers[i].state == PlayerState_BetweenMatches {
-
-				numBetweenMatches++
-
-				activePlayers[i].counter++
-
-				if activePlayers[i].counter > BetweenMatchSeconds {
-					activePlayers[i].state = PlayerState_New
-					activePlayers[i].counter = 0
-					activePlayers[i].datacenterId = 0
+				if activePlayers[i].counter > ExpandTime {
+					numFailures++
+					delete(activePlayers, activePlayers[i].playerId)
 				}
+
 			}
 		}
 
@@ -681,9 +687,7 @@ func runSimulation() {
 
 		time := secondsToTime(seconds)
 		
-		fmt.Printf("%s: %10d playing %10d between matches %5d new %5d ideal %5d expand %4d warmbody\n", time.Format("2006-01-02 15:04:05"), len(inGamePlayers), numBetweenMatches, numNew, numIdeal, numExpand, numWarmBody)
-
-		// fmt.Printf("%s\n", secondsToTime(seconds))
+		fmt.Printf("%s: %10d playing %10d between matches %5d new %5d ideal %5d expand %4d warmbody %4d failures\n", time.Format("2006-01-02 15:04:05"), len(inGamePlayers), len(betweenMatchPlayers), numNew, numIdeal, numExpand, numWarmBody, numFailures)
 
 		/*
 		datacenterArray := make([]*Datacenter, len(datacenters))

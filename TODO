@@ -48,15 +48,17 @@ DONE
 
 	Seems like their are pulses on the hour in the second data set. Switching back to the first.
 
-TODO
+	Optimize the get new players so it doesn't walk the full set of new players each second
 
 	Optimize the between matches state
 
-	--------------------------
+	Code review the logic for ideal -> expand -> warm body
 
-	Optimize the time between matches as well with priority queue.
+	Simplify ideal -> expand -> warm transitions.
 
-	--------------------------
+	Add failure state if we can't find a match.
+
+TODO
 
 	Add expanding focus circles when player counts in a cell pop up, to some maximum amount at a time.
 
