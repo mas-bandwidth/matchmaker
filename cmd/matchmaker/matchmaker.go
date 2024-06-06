@@ -40,6 +40,10 @@ import (
 	"github.com/rs/cors"
 )
 
+const MapWidth = 120
+const MapHeight = 64
+const MapSize = MapWidth * MapHeight
+
 const PlayersPerMatch = 4
 const BetweenMatchSeconds = 30
 const PlayAgainPercent = 70
@@ -54,7 +58,7 @@ const ExpandMaxCost = 200
 const ExpandCostSpread = 10
 const WarmBodyCostThreshold = 100
 
-const SampleDays = 20 // the number of days worth of samples contained in players.csv
+const SampleDays = 1 // the number of days worth of samples contained in players.csv
 
 const LatencyMapWidth = 360
 const LatencyMapHeight = 180
@@ -148,6 +152,22 @@ func datacenterRTT(datacenter *Datacenter, playerLatitude float64, playerLongitu
 		kilometers := haversineDistance(playerLatitude, playerLongitude, datacenter.latitude, datacenter.longitude)
 		return kilometersToRTT(kilometers) * SpeedOfLightFactor
 	}
+}
+
+func getPlayerMapIndex(player *ActivePlayer) int {
+	ix := int( ( player.longitude + MaxLongitude ) / 3.0 )
+	if ix < 0 {
+		ix = 0
+	} else if ix >= MapWidth {
+		ix = MapWidth - 1
+	}
+	iy := int( ( MaxLatitude - player.latitude ) / 3.0 )
+	if iy < 0 {
+		iy = 0
+	} else if iy >= MapHeight {
+		iy = MapHeight - 1
+	}
+	return ix + iy*MapWidth
 }
 
 type Datacenter struct {
@@ -362,18 +382,12 @@ var lastMatch *MatchData
 
 func runSimulation() {
 
+	var countData [MapSize]float64
+
 	var seconds uint64
 	var playerId uint64
 
-	const MapWidth = 120
-	const MapHeight = 64
-	const MapSize = MapWidth * MapHeight
-
-	step := uint64(1)
-
 	for {
-
-		t := seconds % SecondsPerDay
 
 		// add new players to the simulation
 
@@ -385,41 +399,38 @@ func runSimulation() {
 
 		go func() {
 
-			for k := uint64(0); k < step; k++ {
+			index := seconds % SecondsPerDay
 
-				index := t + k
+			for j := range newPlayerData[index] {
 
-				for j := range newPlayerData[index] {
-
-					if !chance(SampleDays) {
-						continue
-					}
-
-					activePlayer := ActivePlayer{}
-
-					activePlayer.playerId = playerId
-					activePlayer.latitude = newPlayerData[index][j].latitude
-					activePlayer.longitude = newPlayerData[index][j].longitude
-					activePlayer.datacenterCostMap = make(map[uint64]DatacenterCostMapEntry)
-					activePlayer.datacenterCosts = make([]DatacenterCostEntry, len(datacenters))
-
-					index := 0
-					for k, v := range datacenters {
-						milliseconds := datacenterRTT(v, activePlayer.latitude, activePlayer.longitude)
-						activePlayer.datacenterCostMap[k] = DatacenterCostMapEntry{cost: milliseconds, index: index}
-						activePlayer.datacenterCosts[index].datacenterId = k
-						activePlayer.datacenterCosts[index].cost = milliseconds
-						index++
-					}
-
-					sort.SliceStable(activePlayer.datacenterCosts[:], func(i, j int) bool {
-						return activePlayer.datacenterCosts[i].cost < activePlayer.datacenterCosts[j].cost
-					})
-
-					newPlayers[playerId] = &activePlayer
-
-					playerId++
+				if !chance(SampleDays) {
+					continue
 				}
+
+				activePlayer := ActivePlayer{}
+
+				activePlayer.playerId = playerId
+				activePlayer.latitude = newPlayerData[index][j].latitude
+				activePlayer.longitude = newPlayerData[index][j].longitude
+				activePlayer.datacenterCostMap = make(map[uint64]DatacenterCostMapEntry)
+				activePlayer.datacenterCosts = make([]DatacenterCostEntry, len(datacenters))
+
+				index := 0
+				for k, v := range datacenters {
+					milliseconds := datacenterRTT(v, activePlayer.latitude, activePlayer.longitude)
+					activePlayer.datacenterCostMap[k] = DatacenterCostMapEntry{cost: milliseconds, index: index}
+					activePlayer.datacenterCosts[index].datacenterId = k
+					activePlayer.datacenterCosts[index].cost = milliseconds
+					index++
+				}
+
+				sort.SliceStable(activePlayer.datacenterCosts[:], func(i, j int) bool {
+					return activePlayer.datacenterCosts[i].cost < activePlayer.datacenterCosts[j].cost
+				})
+
+				newPlayers[playerId] = &activePlayer
+
+				playerId++
 			}
 
 			wg.Done()
@@ -433,18 +444,23 @@ func runSimulation() {
 				lastMatch = heap.Pop(&matchQueue).(*MatchData)
 			}
 
-			if lastMatch == nil || lastMatch.priority > t {
+			if lastMatch == nil || lastMatch.priority > seconds {
 				break
 			}
 
 		    for i := range lastMatch.players {
+				player := lastMatch.players[i]
+				delete(inGamePlayers, player.playerId)
+				index := getPlayerMapIndex(player)
+				countData[index]--
+				/*
 				if percentChance(PlayAgainPercent) {
-					lastMatch.players[i].state = PlayerState_BetweenMatches
-					lastMatch.players[i].counter = 0
-					lastMatch.players[i].datacenterId = 0
-					activePlayers[lastMatch.players[i].playerId] = lastMatch.players[i]
-					delete(inGamePlayers, lastMatch.players[i].playerId)
+					player.state = PlayerState_New // PlayerState_BetweenMatches
+					player.counter = 0
+					player.datacenterId = 0
+					activePlayers[player.playerId] = player
 				}
+				*/
 		    }
 
 		    lastMatch = nil
@@ -603,6 +619,11 @@ func runSimulation() {
 						matchPlayers[j].datacenterId = datacenterId
 						matchPlayers[j].latency = latency
 						matchPlayers[j].counter = 0
+
+						index := getPlayerMapIndex(matchPlayers[j])
+
+						countData[index]++
+
 						// fmt.Fprintf(matchesFile, "%d,%.1f,%.1f,%s,%.1f,%.1f\n", seconds, matchPlayers[j].latitude, matchPlayers[j].longitude, datacenter.name, latency, matchPlayers[j].matchingTime)
 					}
 
@@ -615,12 +636,12 @@ func runSimulation() {
 					// insert the match into the match queue. it will pop off when it's finished
 
 					matchData := MatchData{}
-					matchData.priority = uint64(i + MatchLengthSeconds)
+					matchData.priority = uint64(seconds + MatchLengthSeconds)
 					matchData.players = make([]*ActivePlayer, len(matchPlayers))
 					copy(matchData.players, matchPlayers[:])
 					heap.Push(&matchQueue, &matchData)
-					for i := range matchPlayers {
-						inGamePlayers[matchPlayers[i].playerId] = matchPlayers[i]
+					for j := range matchPlayers {
+						inGamePlayers[matchPlayers[j].playerId] = matchPlayers[j]
 					}
 	
 					// go to next match
@@ -681,33 +702,10 @@ func runSimulation() {
 
 		// update map data
 
-		var countData [MapSize]float64
-
-		// todo: add some code to only update counts when players are added and removed from in game players set -- much faster
-		/*
-		for i := range inGamePlayers {
-			ix := int( ( inGamePlayers[i].longitude + MaxLongitude ) / 3.0 )
-			if ix < 0 {
-				ix = 0
-			} else if ix >= MapWidth {
-				ix = MapWidth - 1
-			}
-			iy := int( ( MaxLatitude - inGamePlayers[i].latitude ) / 3.0 )
-			if iy < 0 {
-				iy = 0
-			} else if iy >= MapHeight {
-				iy = MapHeight - 1
-			}
-			index := ix + iy*MapWidth
-			countData[index]++
-		}
-		*/
-
 		data := make([]uint8, MapSize*4)
 		for i := 0; i < MapSize; i++ {
 			intData := uint32(countData[i])
 			binary.LittleEndian.PutUint32(data[i*4:], intData)
-			countData[i] = 0
 		}
 
 		mapDataMutex.Lock()
@@ -724,7 +722,7 @@ func runSimulation() {
 
 		// advance time
 
-		seconds += step
+		seconds++
 	}
 }
 
@@ -780,4 +778,3 @@ func dataHandler(w http.ResponseWriter, r *http.Request) {
 	mapDataMutex.RUnlock()
 	w.Write(data)
 }
-

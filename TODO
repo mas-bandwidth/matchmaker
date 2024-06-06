@@ -30,8 +30,6 @@ DONE
 
 	Can't use a sleep because it's not operating in real time.
 
-TODO
-
 	Implement a priority queue sorted on time t (seconds), which is set to when the match ends.
 
 	Each frame, simply dequeue the matches that have end match time < t, and add their players back into active players
@@ -39,6 +37,16 @@ TODO
 	Add inGamePlayers map
 
 	Count the inGamePlayers map cells and generate the map data for http request.
+
+	Iterating across all in game players is slow, to get around this, only update counts when players go into match, and when they leave.
+
+	This should get it super fast.
+
+TODO
+
+	It's fast enough. Now check for correctness.
+
+	I want to see a graph of the total number of players over time. It looks a bit funny, like it's going up/down on an hourly basis, which doesn't make sense.
 
 	--------------------------
 
