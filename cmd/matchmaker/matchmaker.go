@@ -401,17 +401,26 @@ func runSimulation() {
 
 			index := seconds % SecondsPerDay
 
-			for j := range newPlayerData[index] {
+			length := len(newPlayerData[index])
 
-				if !chance(SampleDays) {
-					continue
-				}
+			if length == 0 {
+				wg.Done()
+				return
+			}
+
+			offset := rand.Intn(length)
+
+			count := length / SampleDays
+
+			for j := 0; j < count; j++ {
+
+				player_index := ( j + offset ) % length
 
 				activePlayer := ActivePlayer{}
 
 				activePlayer.playerId = playerId
-				activePlayer.latitude = newPlayerData[index][j].latitude
-				activePlayer.longitude = newPlayerData[index][j].longitude
+				activePlayer.latitude = newPlayerData[index][player_index].latitude
+				activePlayer.longitude = newPlayerData[index][player_index].longitude
 				activePlayer.datacenterCostMap = make(map[uint64]DatacenterCostMapEntry)
 				activePlayer.datacenterCosts = make([]DatacenterCostEntry, len(datacenters))
 
@@ -470,7 +479,7 @@ func runSimulation() {
 		numIdeal := 0
 		numExpand := 0
 		numWarmBody := 0
-		numDelay := 0
+		numBetweenMatches := 0
 
 		warmBodies := make(map[uint64]*ActivePlayer)
 
@@ -570,7 +579,7 @@ func runSimulation() {
 
 			} else if activePlayers[i].state == PlayerState_BetweenMatches {
 
-				numDelay++
+				numBetweenMatches++
 
 				activePlayers[i].counter++
 
@@ -672,7 +681,7 @@ func runSimulation() {
 
 		time := secondsToTime(seconds)
 		
-		fmt.Printf("%s: %10d playing %10d delay %5d new %5d ideal %5d expand %4d warmbody\n", time.Format("2006-01-02 15:04:05"), len(inGamePlayers), numDelay, numNew, numIdeal, numExpand, numWarmBody)
+		fmt.Printf("%s: %10d playing %10d between matches %5d new %5d ideal %5d expand %4d warmbody\n", time.Format("2006-01-02 15:04:05"), len(inGamePlayers), numBetweenMatches, numNew, numIdeal, numExpand, numWarmBody)
 
 		// fmt.Printf("%s\n", secondsToTime(seconds))
 
