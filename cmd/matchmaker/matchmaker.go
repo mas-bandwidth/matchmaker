@@ -531,7 +531,7 @@ func runSimulation() {
 						}
 					}
 
-				} else if cost < ExpandCostThreshold {
+				} else if cost <= ExpandCostThreshold {
 
 					activePlayers[i].state = PlayerState_Expand
 
