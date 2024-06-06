@@ -42,11 +42,15 @@ DONE
 
 	This should get it super fast.
 
-TODO
-
 	It's fast enough. Now check for correctness.
 
 	I want to see a graph of the total number of players over time. It looks a bit funny, like it's going up/down on an hourly basis, which doesn't make sense.
+
+	Seems like their are pulses on the hour in the second data set. Switching back to the first.
+
+TODO
+
+	
 
 	--------------------------
 
