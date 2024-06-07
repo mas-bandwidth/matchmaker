@@ -15,5 +15,8 @@ clean: ## clean everything
 .PHONY: rebuild
 rebuild: clean build ## rebuild everything
 
-dist/%: cmd/%/*.go
+data/players.csv: data/players.zip
+	cd data && unzip -oq players.zip && touch players.csv
+
+dist/%: cmd/%/*.go data/players.csv
 	@go build -o $@ $(<D)/*.go

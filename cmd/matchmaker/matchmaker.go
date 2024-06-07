@@ -59,7 +59,7 @@ const SpeedOfLightFactor = 2
 const IdealCostThreshold = 50
 const ExpandCostThreshold = 100
 
-const SampleDays = 1 // the number of days worth of samples contained in players.csv
+const SampleDays = 5 // the number of days worth of samples contained in players.csv
 
 const LatencyMapWidth = 360
 const LatencyMapHeight = 180
@@ -177,8 +177,62 @@ type Datacenter struct {
 
 var datacenters map[uint64]*Datacenter
 
+const PlayerState_New = 0
+const PlayerState_Ideal = 1
+const PlayerState_Expand = 2
+const PlayerState_WarmBody = 3
+const PlayerState_Playing = 4
+const PlayerState_BetweenMatches = 5
+
+type DatacenterCostEntry struct {
+	datacenterId uint64
+	cost         float64
+}
+
+const DatacenterLookupWidth = MaxLongitude - MinLongitude + 1
+const DatacenterLookupHeight = MaxLatitude - MinLatitude + 1
+
+var datacenterLookup [DatacenterLookupWidth*DatacenterLookupHeight][]DatacenterCostEntry
+
+func getDatacenterLookupIndex(latitude int, longitude int) int {
+	x := latitude - MinLatitude
+	y := longitude - MinLongitude
+	if x < 0 {
+		x = 0
+	} else if x > DatacenterLookupWidth - 1 {
+		x = DatacenterLookupWidth - 1
+	}
+	if y < 0 {
+		y = 0
+	} else if y > DatacenterLookupHeight - 1 {
+		y = DatacenterLookupHeight - 1
+	}
+	return x + y * DatacenterLookupWidth
+}
+
+type ActivePlayer struct {
+	playerId          uint64
+	state             int
+	latitude          float64
+	longitude         float64
+	datacenterCosts   []DatacenterCostEntry
+	counter           int
+	matchingTime      float64
+	datacenterId      uint64
+	latency           float64
+}
+
+var activePlayers map[uint64]*ActivePlayer
+
+var inGamePlayers map[uint64]*ActivePlayer
+
+var betweenMatchPlayers map[uint64]*ActivePlayer
+
 var matchesFile *os.File
+
 var statsFile *os.File
+
+// ---------------------------------------------------------------------------------------------------------------------------
 
 func initialize() {
 
@@ -246,7 +300,7 @@ func initialize() {
 	}
 
 	for _, v := range datacenters {
-		v.playerQueue = make([]*ActivePlayer, 0, 10 * 1024)
+		v.playerQueue = make([]*ActivePlayer, 0, 100 * 1024)
 	}
 
 	// load latency maps for each datacenter
@@ -274,7 +328,7 @@ func initialize() {
 
 	// create lookup for datacenters in latency order by lat, long
 
-	fmt.Printf("generating datacenter lookup map...\n")
+	fmt.Printf("generating datacenter lookup...\n")
 
 	for latitude := MinLatitude; latitude <= MaxLatitude; latitude++ {
 
@@ -294,19 +348,19 @@ func initialize() {
 				return datacenterCosts[i].cost < datacenterCosts[j].cost
 			})
 
-			// todo
+			lookupIndex := getDatacenterLookupIndex(latitude, longitude)
 
-			_ = datacenterCosts
+			datacenterLookup[lookupIndex] = datacenterCosts
 		}
 	}
 
 	// create active players hash (empty)
 
-	activePlayers = make(map[uint64]*ActivePlayer)
+	activePlayers = make(map[uint64]*ActivePlayer, 100000)
 
-	betweenMatchPlayers = make(map[uint64]*ActivePlayer)
+	betweenMatchPlayers = make(map[uint64]*ActivePlayer, 100000)
 
-	inGamePlayers = make(map[uint64]*ActivePlayer)
+	inGamePlayers = make(map[uint64]*ActivePlayer, 100000)
 
 	fmt.Printf("ready!\n")
 
@@ -328,46 +382,11 @@ func initialize() {
 	heap.Init(&betweenMatchesQueue)
 }
 
-const PlayerState_New = 0
-const PlayerState_Ideal = 1
-const PlayerState_Expand = 2
-const PlayerState_WarmBody = 3
-const PlayerState_Playing = 4
-const PlayerState_BetweenMatches = 5
-
-type DatacenterCostMapEntry struct {
-	index int
-	cost  float64
-}
-
-type DatacenterCostEntry struct {
-	datacenterId uint64
-	cost         float64
-}
-
-type ActivePlayer struct {
-	playerId          uint64
-	state             int
-	latitude          float64
-	longitude         float64
-	datacenterCosts   []DatacenterCostEntry
-	counter           int
-	matchingTime      float64
-	datacenterId      uint64
-	latency           float64
-}
-
-var activePlayers map[uint64]*ActivePlayer
-
-var inGamePlayers map[uint64]*ActivePlayer
-
-var betweenMatchPlayers map[uint64]*ActivePlayer
-
 // -----------------------------------------------------------------------------------------------------
 
 type MatchData struct {
 	priority uint64
-	players []*ActivePlayer
+	players [PlayersPerMatch]*ActivePlayer
 	index int
 }
 
@@ -427,7 +446,7 @@ func runSimulation() {
 
 		wg.Add(1)
 
-		newPlayers := make(map[uint64]*ActivePlayer)
+		newPlayers := make(map[uint64]*ActivePlayer, 100000)
 
 		go func() {
 
@@ -453,19 +472,13 @@ func runSimulation() {
 				activePlayer.playerId = playerId
 				activePlayer.latitude = newPlayerData[index][player_index].latitude
 				activePlayer.longitude = newPlayerData[index][player_index].longitude
-				activePlayer.datacenterCosts = make([]DatacenterCostEntry, len(datacenters))
 
-				index := 0
-				for k, v := range datacenters {
-					milliseconds := datacenterRTT(v, activePlayer.latitude, activePlayer.longitude)
-					activePlayer.datacenterCosts[index].datacenterId = k
-					activePlayer.datacenterCosts[index].cost = milliseconds
-					index++
-				}
+				latitude := int(math.Floor(newPlayerData[index][player_index].latitude))
+				longitude := int(math.Floor(newPlayerData[index][player_index].longitude))
 
-				sort.SliceStable(activePlayer.datacenterCosts[:], func(i, j int) bool {
-					return activePlayer.datacenterCosts[i].cost < activePlayer.datacenterCosts[j].cost
-				})
+				lookupIndex := getDatacenterLookupIndex(latitude, longitude)
+
+				activePlayer.datacenterCosts = datacenterLookup[lookupIndex]
 
 				newPlayers[playerId] = &activePlayer
 
@@ -536,7 +549,7 @@ func runSimulation() {
 		numWarmBody := 0
 		numFailures := 0
 
-		warmBodies := make(map[uint64]*ActivePlayer)
+		warmBodies := make(map[uint64]*ActivePlayer, 10000)
 
 		for i := range activePlayers {
 
@@ -592,7 +605,7 @@ func runSimulation() {
 				activePlayers[i].counter++
 				activePlayers[i].matchingTime += 1.0
 
-				if activePlayers[i].counter > IdealTime {
+				if activePlayers[i].counter >= IdealTime {
 					activePlayers[i].state = PlayerState_Expand
 					activePlayers[i].counter = 0
 					for j := range activePlayers[i].datacenterCosts {
@@ -611,7 +624,7 @@ func runSimulation() {
 				activePlayers[i].counter++
 				activePlayers[i].matchingTime += 1.0
 
-				if activePlayers[i].counter > ExpandTime {
+				if activePlayers[i].counter >= ExpandTime {
 					activePlayers[i].state = PlayerState_WarmBody
 					activePlayers[i].counter = 0
 				}
@@ -646,7 +659,9 @@ func runSimulation() {
 		averageLatency /= float64(len(datacenters))
 		averageSearchTime /= float64(len(datacenters))
 
-		fmt.Printf("%s: %10d playing %8d between matches %5d new %5d ideal %5d expand %4d warmbody %4d fail %4ds search time %4dms latency\n", time.Format("2006-01-02 15:04:05"), len(inGamePlayers), len(betweenMatchPlayers), numNew, numIdeal, numExpand, numWarmBody, numFailures, int(math.Ceil(averageSearchTime)), int(math.Ceil(averageLatency)))
+		fmt.Printf("%s: %10d players %4ds average search time %5dms average latency\n", time.Format("2006-01-02 15:04:05"), len(inGamePlayers) + len(betweenMatchPlayers), int(math.Ceil(averageSearchTime)), int(math.Ceil(averageLatency)))
+
+		// fmt.Printf("%s: %10d playing %8d between matches %5d new %5d ideal %5d expand %4d warmbody %4d fail %4ds search time %4dms latency\n", time.Format("2006-01-02 15:04:05"), len(inGamePlayers), len(betweenMatchPlayers), numNew, numIdeal, numExpand, numWarmBody, numFailures, int(math.Ceil(averageSearchTime)), int(math.Ceil(averageLatency)))
 
 		// iterate across all datacenter queues
 
@@ -701,8 +716,7 @@ func runSimulation() {
 
 					matchData := MatchData{}
 					matchData.priority = uint64(seconds + MatchLengthSeconds)
-					matchData.players = make([]*ActivePlayer, len(matchPlayers))
-					copy(matchData.players, matchPlayers[:])
+					copy(matchData.players[:], matchPlayers[:])
 					heap.Push(&matchQueue, &matchData)
 					for j := range matchPlayers {
 						inGamePlayers[matchPlayers[j].playerId] = matchPlayers[j]
