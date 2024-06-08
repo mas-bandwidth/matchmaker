@@ -31,7 +31,7 @@ To view the real-time visualization of players on a map, just open map/index.htm
 
 Or you could just watch it on youtube:
 
-[![Matchmaker Simulator on YouTube](http://img.youtube.com/vi/5QOyvrKB_8Q/0.jpg)](http://www.youtube.com/watch?v=5QOyvrKB_8Q "Matchmaker Simulation")
+[![Matchmaker Simulator on YouTube]([http://img.youtube.com/vi/5QOyvrKB_8Q/0.jpg](https://github.com/mas-bandwidth/matchmaker/assets/696656/0cf93c31-422b-47da-b27c-9ad30896ac50))](http://www.youtube.com/watch?v=5QOyvrKB_8Q "Matchmaker Simulation")
 
 The datasets are included under the "data" folder. In particular, players.csv defines the player lat/long coordinates joining each second. 
 
