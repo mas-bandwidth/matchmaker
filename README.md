@@ -1,37 +1,42 @@
 # matchmaker simulation
 
-## Goal
+Example source code for https://mas-bandwidth.com/creating-a-matchmaker-for-your-multiplayer-game
 
-Find low latency matches as quickly as possible.
+To run the simulator:
 
-## Strategy
+```console
+make && ./dist/matchmaker
+```
 
-For each new player entering the matchmaking pool:
+You should see output like this:
 
-* Set the player state to "NEW".
+```console
+2024-02-18 04:57:15:      25312 players    2s average search time    33ms average latency
+2024-02-18 04:57:16:      25288 players    2s average search time    33ms average latency
+2024-02-18 04:57:17:      25308 players    2s average search time    32ms average latency
+2024-02-18 04:57:18:      25300 players    2s average search time    32ms average latency
+2024-02-18 04:57:19:      25308 players    2s average search time    33ms average latency
+2024-02-18 04:57:20:      25308 players    2s average search time    33ms average latency
+2024-02-18 04:57:21:      25296 players    2s average search time    33ms average latency
+2024-02-18 04:57:22:      25284 players    2s average search time    33ms average latency
+2024-02-18 04:57:23:      25296 players    2s average search time    33ms average latency
+2024-02-18 04:57:24:      25288 players    2s average search time    32ms average latency
+2024-02-18 04:57:25:      25276 players    2s average search time    33ms average latency
+2024-02-18 04:57:26:      25268 players    2s average search time    32ms average latency
+2024-02-18 04:57:27:      25256 players    2s average search time    32ms average latency
+2024-02-18 04:57:28:      25260 players    2s average search time    32ms average latency
+```
 
-For players in state "NEW":
+To view the real-time visualization of players on a map, just open map/index.html in a browser.
 
-* Find all datacenters less than ideal threshold (50ms). If one or more datacenters are found, go to the "IDEAL" state.
+Or you can just watch it on YouTube:
 
-* If no datacenters found under ideal threshold, find all datacenters less than expand threshold (100ms). If one or more datacenters are found, go to the "EXPAND" state.
+<a href="http://www.youtube.com/watch?v=5QOyvrKB_8Q">
+  <img width="2467" alt="image" src="https://github.com/mas-bandwidth/matchmaker/assets/696656/c222d80e-3706-4e87-9ec6-12b563ee57cd">
+</a>
 
-* If no datacenters are found under the expand threshold, go to the "WARMBODY" state.
+The datasets are included under the "data" folder. In particular, players.csv defines the player lat/long coordinates joining each second. 
 
-Players in "IDEAL" state should quickly find a game and go to "PLAYING" state. 
+The rest of the data defines the set of datacenters and the latency maps per-datacenter.
 
-* Any players that don't find a game within 10 seconds, go to "EXPAND" state.
-
-Players in "EXPAND" state should quickly find a game and go to "PLAYING" state.
-
-* Any players that don't find a game within 10 seconds, go to "WARMBODY" state.
-
-Players in "WARMBODY" state donate themselves to all matchmaking queues. They just need to play somewhere.
-
-* Look across all datacenters in the region for games that need extra players to start, regardless of latency, and volunteer the warm body.
-
-* Any players that don't find a game within 10 seconds, go to "FAILED" state.
-
-Players in "PLAYING" state go to "BETWEEN MATCH" state at the end of the match.
-
-Players in "BETWEEN MATCH" go to "NEW" state once the time between matches has elapsed.
+Tested on MacOS. Linux should work. Windows untested.
