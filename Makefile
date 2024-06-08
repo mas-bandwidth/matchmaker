@@ -9,6 +9,7 @@ format:
 
 .PHONY: clean
 clean: ## clean everything
+	@rm -rf data/players.csv
 	@rm -rf dist
 	@mkdir dist
 
@@ -16,7 +17,7 @@ clean: ## clean everything
 rebuild: clean build ## rebuild everything
 
 data/players.csv: data/players.zip
-	cd data && unzip -oq players.zip && touch players.csv
+	@cd data && unzip -oq players.zip && touch players.csv
 
 dist/%: cmd/%/*.go data/players.csv
 	@go build -o $@ $(<D)/*.go
