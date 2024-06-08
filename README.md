@@ -29,6 +29,8 @@ You should see output like this:
 
 To view the real-time visualization of players on a map, just open map/index.html in a browser.
 
+<iframe width="800" height="350" src="https://www.youtube.com/embed/5QOyvrKB_8Q?si=L0gHfcLv2Lz-shUA" title="Matchmaker Simulation" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 The datasets are included under the "data" folder. In particular, players.csv defines the player lat/long coordinates joining each second. 
 
 The rest of the data defines the set of datacenters and the latency maps per-datacenter.
