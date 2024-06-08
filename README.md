@@ -29,7 +29,9 @@ You should see output like this:
 
 To view the real-time visualization of players on a map, just open map/index.html in a browser.
 
-Or you could just watch it on youtube:
+Or you could just watch it on YouTube:
+
+
 
 [![Matchmaker Simulator on YouTube]([https://github.com/mas-bandwidth/matchmaker/assets/696656/0cf93c31-422b-47da-b27c-9ad30896ac50](https://github.com/mas-bandwidth/matchmaker/assets/696656/0cf93c31-422b-47da-b27c-9ad30896ac50))](http://www.youtube.com/watch?v=5QOyvrKB_8Q "Matchmaker Simulation")
 
