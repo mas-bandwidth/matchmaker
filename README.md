@@ -2,6 +2,8 @@
 
 Example source code for https://mas-bandwidth.com/creating-a-matchmaker-for-your-multiplayer-game
 
+If this work helps you, please support it: **[Become a supporter](https://www.patreon.com/MasBandwidth/membership)**
+
 To run the simulator:
 
 ```console
